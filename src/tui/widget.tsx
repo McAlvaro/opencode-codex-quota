@@ -1,5 +1,6 @@
 /** @jsxImportSource @opentui/solid */
-import { createSignal, onCleanup, onMount } from "solid-js";
+import { createSignal, onCleanup, onMount, type Accessor } from "solid-js";
+import fs from "node:fs";
 import { formatBadge, type QuotaBadge } from "./format.js";
 import type { OpenCodeAuthProvider } from "../auth/provider.js";
 import type { CodexTelemetryClient } from "../telemetry/client.js";
@@ -8,45 +9,99 @@ export interface CodexQuotaWidgetProps {
   authProvider: OpenCodeAuthProvider;
   telemetryClient: CodexTelemetryClient;
   pollIntervalMs?: number;
+  badge?: Accessor<QuotaBadge>;
+}
+
+function debugLog(msg: string) {
+  try {
+    fs.appendFileSync(
+      "/tmp/opencode-quota-debug.log",
+      `[${new Date().toISOString()}] ${msg}\n`,
+    );
+  } catch {
+    // Ignore logging failures
+  }
+}
+
+let sharedBadge: Accessor<QuotaBadge> | null = null;
+let setSharedBadge: ((badge: QuotaBadge) => void) | null = null;
+let pollTimer: NodeJS.Timeout | null = null;
+
+export function getOrCreateSharedBadgeSignal() {
+  if (!sharedBadge || !setSharedBadge) {
+    const [b, setB] = createSignal<QuotaBadge>({
+      text: "[Codex: ...]",
+      color: "gray",
+    });
+    sharedBadge = b;
+    setSharedBadge = setB;
+  }
+  return { badge: sharedBadge, setBadge: setSharedBadge };
+}
+
+export function resetSharedBadgeState() {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+  sharedBadge = null;
+  setSharedBadge = null;
 }
 
 export function CodexQuotaWidget(props: CodexQuotaWidgetProps) {
-  const [badge, setBadge] = createSignal<QuotaBadge>({
-    text: "[Codex: ...]",
-    color: "gray",
-  });
-
+  const { badge, setBadge } = getOrCreateSharedBadgeSignal();
   const pollInterval = props.pollIntervalMs ?? 30_000;
 
   async function update() {
+    debugLog("CodexQuotaWidget.update() started");
     try {
       const authResult = await props.authProvider.getCredentials();
+      debugLog(`authResult status: ${authResult.status}`);
       if (authResult.status !== "valid") {
-        setBadge(formatBadge(null, authResult.status));
+        const fallback = formatBadge(null, authResult.status);
+        setBadge(fallback);
+        debugLog(`Set fallback badge: ${JSON.stringify(fallback)}`);
         return;
       }
 
       const telemetry = await props.telemetryClient.getTelemetry(
         authResult.credentials,
       );
-      setBadge(formatBadge(telemetry, "valid"));
-    } catch {
+      debugLog(`telemetry returned: ${JSON.stringify(telemetry)}`);
+      const newBadge = formatBadge(telemetry, "valid");
+      setBadge(newBadge);
+      debugLog(`Set active badge: ${JSON.stringify(newBadge)}`);
+    } catch (err) {
+      debugLog(
+        `update error: ${err instanceof Error ? err.stack : String(err)}`,
+      );
       setBadge({ text: "[Codex: Err]", color: "red" });
     }
   }
 
-  onMount(() => {
-    void update();
-    const timer = setInterval(() => {
+  // Trigger update immediately upon instantiation!
+  void update();
+
+  if (!pollTimer) {
+    pollTimer = setInterval(() => {
       void update();
     }, pollInterval);
+  }
 
-    onCleanup(() => clearInterval(timer));
+  onMount(() => {
+    debugLog("CodexQuotaWidget onMount fired");
+    void update();
   });
+
+  onCleanup(() => {
+    debugLog("CodexQuotaWidget onCleanup fired");
+  });
+
+  const displayBadge = props.badge ?? badge;
 
   return (
     <box flexDirection="row">
-      <text fg={badge().color}>{badge().text}</text>
+      <text fg={displayBadge().color}>{displayBadge().text}</text>
     </box>
   );
 }
