@@ -11,6 +11,7 @@ import type { ResetController } from "../actions/reset-controller.js";
 
 vi.mock("./reset-dialog.js", () => ({
   showQuotaDetailsDialog: vi.fn(),
+  showUsageDetailsDialog: vi.fn(),
 }));
 
 describe("TUI Commands", () => {
@@ -71,12 +72,11 @@ describe("TUI Commands", () => {
       expect(typeof cmd.onSelect).toBe("function");
 
       cmd.onSelect?.();
-      const { showQuotaDetailsDialog } = await import("./reset-dialog.js");
-      expect(showQuotaDetailsDialog).toHaveBeenCalledWith(
+      const { showUsageDetailsDialog } = await import("./reset-dialog.js");
+      expect(showUsageDetailsDialog).toHaveBeenCalledWith(
         mockApi,
         mockAuthProvider,
         mockTelemetryClient,
-        mockResetController,
       );
     });
   });

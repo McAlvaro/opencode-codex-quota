@@ -3,7 +3,10 @@ import type { TuiPluginApi, TuiCommand } from "@opencode-ai/plugin/tui";
 import type { OpenCodeAuthProvider } from "../auth/provider.js";
 import type { CodexTelemetryClient } from "../telemetry/client.js";
 import type { ResetController } from "../actions/reset-controller.js";
-import { showQuotaDetailsDialog } from "./reset-dialog.js";
+import {
+  showQuotaDetailsDialog,
+  showUsageDetailsDialog,
+} from "./reset-dialog.js";
 
 function debugLog(msg: string) {
   try {
@@ -23,11 +26,11 @@ export function createQuotaCommand(
   resetController: ResetController,
 ): TuiCommand {
   return {
-    title: "Codex Quota: Ver uso y tarjeta detallada",
+    title: "Codex Quota: Ver límites y cuota",
     value: "codex.quota",
     category: "Codex",
     description:
-      "Tarjeta Moshi: Plan, ventanas 5h y 7d, ritmo y créditos de reseteo",
+      "Tarjeta de límites: Barras 5h y 7d, plan, ritmo y canje de créditos",
     slash: {
       name: "codex-quota",
       aliases: ["quota", "codex"],
@@ -48,26 +51,21 @@ export function createUsageCommand(
   api: TuiPluginApi,
   authProvider: OpenCodeAuthProvider,
   telemetryClient: CodexTelemetryClient,
-  resetController: ResetController,
+  _resetController?: ResetController,
 ): TuiCommand {
   return {
-    title: "Codex Usage: View Quota Telemetry & Reset",
+    title: "Codex Usage: Análisis de telemetría y ritmo",
     value: "codex.usage",
     category: "Codex",
     description:
-      "Inspect 5-hour rolling windows and consume rate limit reset credits",
+      "Desglose de telemetría: Velocidad de consumo, diagnósticos y conexión",
     slash: {
       name: "codex-usage",
       aliases: ["usage"],
     },
     onSelect: () => {
       debugLog("Command 'codex-usage' selected");
-      void showQuotaDetailsDialog(
-        api,
-        authProvider,
-        telemetryClient,
-        resetController,
-      );
+      void showUsageDetailsDialog(api, authProvider, telemetryClient);
     },
   };
 }

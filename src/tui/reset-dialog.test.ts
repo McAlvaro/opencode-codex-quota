@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { showQuotaDetailsDialog } from "./reset-dialog.js";
+import {
+  showQuotaDetailsDialog,
+  showUsageDetailsDialog,
+} from "./reset-dialog.js";
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 import type { OpenCodeAuthProvider } from "../auth/provider.js";
 import type { CodexTelemetryClient } from "../telemetry/client.js";
@@ -37,6 +40,7 @@ describe("showQuotaDetailsDialog", () => {
         dialog: {
           replace: vi.fn(),
           clear: vi.fn(),
+          setSize: vi.fn(),
         },
         DialogSelect: vi.fn((props) => ({ type: "DialogSelect", props })),
         DialogConfirm: vi.fn((props) => ({ type: "DialogConfirm", props })),
@@ -52,6 +56,7 @@ describe("showQuotaDetailsDialog", () => {
 
     mockTelemetryClient = {
       getTelemetry: vi.fn().mockResolvedValue(SAMPLE_TELEMETRY),
+      invalidateCache: vi.fn(),
     };
 
     mockResetController = {
@@ -109,14 +114,14 @@ describe("showQuotaDetailsDialog", () => {
       mockResetController as ResetController,
     );
 
+    expect(mockApi.ui.dialog.setSize).toHaveBeenCalledWith("large");
     expect(mockApi.ui.dialog.replace).toHaveBeenCalledTimes(1);
 
-    // Call the dialog renderer function passed to replace
     const renderFn = mockApi.ui.dialog.replace.mock.calls[0][0];
     const rendered = renderFn();
 
     expect(mockApi.ui.DialogSelect).toHaveBeenCalled();
-    expect(rendered.props.title).toBe("OpenCode Codex Quota & Usage");
+    expect(rendered.props.title).toBe("OpenCode · Cuota y Límites de Codex");
     expect(rendered.props.options.length).toBeGreaterThan(0);
   });
 
@@ -136,7 +141,6 @@ describe("showQuotaDetailsDialog", () => {
 
     expect(consumeOption).toBeDefined();
 
-    // Trigger onSelect on consume option -> replaces dialog with Confirm
     consumeOption.onSelect();
 
     expect(mockApi.ui.dialog.replace).toHaveBeenCalledTimes(2);
@@ -146,7 +150,6 @@ describe("showQuotaDetailsDialog", () => {
     expect(mockApi.ui.DialogConfirm).toHaveBeenCalled();
     expect(confirmNode.props.title).toBe("Confirm Quota Reset");
 
-    // Developer confirms
     await confirmNode.props.onConfirm();
 
     expect(mockApi.ui.dialog.clear).toHaveBeenCalled();
@@ -214,5 +217,55 @@ describe("showQuotaDetailsDialog", () => {
 
     expect(mockApi.ui.dialog.clear).toHaveBeenCalled();
     expect(mockResetController.consume).not.toHaveBeenCalled();
+  });
+});
+
+describe("showUsageDetailsDialog", () => {
+  let mockApi: any;
+  let mockAuthProvider: any;
+  let mockTelemetryClient: any;
+
+  beforeEach(() => {
+    mockApi = {
+      ui: {
+        toast: vi.fn(),
+        dialog: {
+          replace: vi.fn(),
+          clear: vi.fn(),
+          setSize: vi.fn(),
+        },
+        DialogSelect: vi.fn((props) => ({ type: "DialogSelect", props })),
+      },
+    };
+
+    mockAuthProvider = {
+      getCredentials: vi.fn().mockResolvedValue({
+        status: "valid",
+        credentials: VALID_CREDS,
+      }),
+    };
+
+    mockTelemetryClient = {
+      getTelemetry: vi.fn().mockResolvedValue(SAMPLE_TELEMETRY),
+      invalidateCache: vi.fn(),
+    };
+  });
+
+  it("should open DialogSelect with usage options when invoked", async () => {
+    await showUsageDetailsDialog(
+      mockApi as TuiPluginApi,
+      mockAuthProvider as OpenCodeAuthProvider,
+      mockTelemetryClient as CodexTelemetryClient,
+    );
+
+    expect(mockApi.ui.dialog.setSize).toHaveBeenCalledWith("large");
+    expect(mockApi.ui.dialog.replace).toHaveBeenCalledTimes(1);
+
+    const renderFn = mockApi.ui.dialog.replace.mock.calls[0][0];
+    const rendered = renderFn();
+
+    expect(mockApi.ui.DialogSelect).toHaveBeenCalled();
+    expect(rendered.props.title).toBe("OpenCode · Telemetría y Análisis de Consumo");
+    expect(rendered.props.options.length).toBeGreaterThan(0);
   });
 });

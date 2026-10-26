@@ -3,8 +3,15 @@ import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 import type { OpenCodeAuthProvider } from "../auth/provider.js";
 import type { CodexTelemetryClient } from "../telemetry/client.js";
 import type { ResetController } from "../actions/reset-controller.js";
-import { buildQuotaDialogOptions } from "./dialog-options.js";
+import {
+  buildQuotaCardOptions,
+  buildUsageCardOptions,
+} from "./dialog-options.js";
 
+/**
+ * Shows the Quota & Limits card dialog (`/codex-quota`).
+ * Focuses on visual capacity gauges, reset countdowns, and reset credit redemption.
+ */
 export async function showQuotaDetailsDialog(
   api: TuiPluginApi,
   authProvider: OpenCodeAuthProvider,
@@ -74,17 +81,88 @@ export async function showQuotaDetailsDialog(
     ));
   };
 
-  const options = buildQuotaDialogOptions(telemetry, {
+  const handleRefresh = async () => {
+    api.ui.toast({
+      variant: "info",
+      title: "Codex Quota",
+      message: "Sincronizando límites con ChatGPT...",
+    });
+    telemetryClient.invalidateCache();
+    await showQuotaDetailsDialog(api, authProvider, telemetryClient, resetController);
+  };
+
+  const options = buildQuotaCardOptions(telemetry, {
     onConsume: openConfirmDialog,
+    onRefresh: handleRefresh,
     onClose: () => {
       api.ui.dialog.clear();
     },
   });
 
+  api.ui.dialog.setSize("large");
   api.ui.dialog.replace(() => (
     <api.ui.DialogSelect
-      title="OpenCode Codex Quota & Usage"
-      placeholder="Select an action or view telemetry..."
+      title="OpenCode · Cuota y Límites de Codex"
+      placeholder="Explora límites de cuota o canjea un crédito de reseteo..."
+      options={options}
+    />
+  ));
+}
+
+/**
+ * Shows the Usage & Telemetry card dialog (`/codex-usage`).
+ * Focuses on burn rate (pacing), analytical percentages, system health, and diagnostics.
+ */
+export async function showUsageDetailsDialog(
+  api: TuiPluginApi,
+  authProvider: OpenCodeAuthProvider,
+  telemetryClient: CodexTelemetryClient,
+): Promise<void> {
+  const authResult = await authProvider.getCredentials();
+  if (authResult.status !== "valid") {
+    api.ui.toast({
+      variant: "error",
+      title: "Codex Usage",
+      message: `Authentication issue: ${authResult.status}`,
+    });
+    return;
+  }
+
+  const telemetry = await telemetryClient.getTelemetry(
+    authResult.credentials,
+    true,
+  );
+  if (!telemetry) {
+    api.ui.toast({
+      variant: "error",
+      title: "Codex Usage",
+      message: "Failed to retrieve telemetry data from ChatGPT backend",
+    });
+    return;
+  }
+
+  const handleRefresh = async () => {
+    api.ui.toast({
+      variant: "info",
+      title: "Codex Usage",
+      message: "Actualizando telemetría y diagnóstico...",
+    });
+    telemetryClient.invalidateCache();
+    await showUsageDetailsDialog(api, authProvider, telemetryClient);
+  };
+
+  const options = buildUsageCardOptions(telemetry, {
+    onRefresh: handleRefresh,
+    onClose: () => {
+      api.ui.dialog.clear();
+    },
+  });
+
+  api.ui.dialog.setSize("large");
+  api.ui.dialog.replace(() => (
+    <api.ui.DialogSelect
+      title="OpenCode · Telemetría y Análisis de Consumo"
+      placeholder="Consulta telemetría detallada, velocidad y diagnósticos..."
       options={options}
     />
   ));
