@@ -1,5 +1,6 @@
 node_modules/
 dist/
+coverage/
 .codegraph/
 *.log
 .DS_Store
