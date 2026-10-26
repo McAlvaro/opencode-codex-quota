@@ -16,3 +16,6 @@ export * from "./actions/reset-controller.js";
 export * from "./tui/format.js";
 export * from "./tui/widget.js";
 export * from "./tui/slot.js";
+export * from "./tui/dialog-options.js";
+export * from "./tui/reset-dialog.js";
+export * from "./tui/commands.js";
