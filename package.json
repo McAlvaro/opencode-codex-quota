@@ -11,8 +11,17 @@
       "types": "./dist/index.d.ts"
     }
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/McAlvaro/opencode-codex-quota.git"
+  },
+  "homepage": "https://github.com/McAlvaro/opencode-codex-quota#readme",
+  "bugs": {
+    "url": "https://github.com/McAlvaro/opencode-codex-quota/issues"
+  },
   "scripts": {
     "build": "tsc",
+    "prepare": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

@@ -21,20 +21,50 @@ When using OpenCode with ChatGPT / OpenAI Codex subscription credentials, agenti
 
 ## Installation & Setup
 
-### 1. Build the plugin
+### Option 1: Install into OpenCode Plugins Directory (Recommended)
+
+1. Clone the repository into your OpenCode plugins folder:
+   ```bash
+   git clone https://github.com/McAlvaro/opencode-codex-quota.git ~/.config/opencode/plugins/opencode-codex-quota
+   ```
+
+2. Install dependencies and build:
+   ```bash
+   cd ~/.config/opencode/plugins/opencode-codex-quota
+   npm install
+   npm run build
+   ```
+
+3. Register the plugin in `~/.config/opencode/tui.jsonc` (or project-level `.opencode/tui.jsonc`):
+   ```jsonc
+   {
+     "$schema": "https://opencode.ai/tui.json",
+     "plugins": [
+       "file://~/.config/opencode/plugins/opencode-codex-quota/dist/index.js"
+     ]
+   }
+   ```
+
+*(Note: Replace `~` with your absolute home path if your environment requires absolute URIs, e.g. `file:///home/username/...`)*
+
+### Option 2: Clone Anywhere & Link
+
+If you already cloned the repository elsewhere:
+
 ```bash
+git clone https://github.com/McAlvaro/opencode-codex-quota.git
+cd opencode-codex-quota
 npm install
 npm run build
 ```
 
-### 2. Register in OpenCode TUI Configuration
-Add the compiled module path to your local or global `tui.jsonc` (e.g. `~/.config/opencode/tui.jsonc`):
+Then add the absolute path to your `dist/index.js` into `tui.jsonc`:
 
 ```jsonc
 {
   "$schema": "https://opencode.ai/tui.json",
   "plugins": [
-    "file:///home/alvaro/Documents/Courses/personal-projects/opencode-codex-quota/dist/index.js"
+    "file:///absolute/path/to/opencode-codex-quota/dist/index.js"
   ]
 }
 ```
