@@ -99,7 +99,7 @@ export async function showQuotaDetailsDialog(
     },
   });
 
-  api.ui.dialog.setSize("large");
+  api.ui.dialog.setSize("xlarge");
   api.ui.dialog.replace(() => (
     <api.ui.DialogSelect
       title="OpenCode · Cuota y Límites de Codex"
@@ -158,7 +158,7 @@ export async function showUsageDetailsDialog(
     },
   });
 
-  api.ui.dialog.setSize("large");
+  api.ui.dialog.setSize("xlarge");
   api.ui.dialog.replace(() => (
     <api.ui.DialogSelect
       title="OpenCode · Telemetría y Análisis de Consumo"

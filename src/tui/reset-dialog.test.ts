@@ -114,7 +114,7 @@ describe("showQuotaDetailsDialog", () => {
       mockResetController as ResetController,
     );
 
-    expect(mockApi.ui.dialog.setSize).toHaveBeenCalledWith("large");
+    expect(mockApi.ui.dialog.setSize).toHaveBeenCalledWith("xlarge");
     expect(mockApi.ui.dialog.replace).toHaveBeenCalledTimes(1);
 
     const renderFn = mockApi.ui.dialog.replace.mock.calls[0][0];
@@ -258,7 +258,7 @@ describe("showUsageDetailsDialog", () => {
       mockTelemetryClient as CodexTelemetryClient,
     );
 
-    expect(mockApi.ui.dialog.setSize).toHaveBeenCalledWith("large");
+    expect(mockApi.ui.dialog.setSize).toHaveBeenCalledWith("xlarge");
     expect(mockApi.ui.dialog.replace).toHaveBeenCalledTimes(1);
 
     const renderFn = mockApi.ui.dialog.replace.mock.calls[0][0];
