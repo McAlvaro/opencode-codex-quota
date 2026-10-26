@@ -38,41 +38,81 @@ describe("buildQuotaCardOptions", () => {
       onClose,
     });
 
+    // 1 plan row + 2 bar rows + 3 action rows = 6 total
     expect(options.length).toBe(6);
 
-    // Option 0: Plan & Pacing
-    expect(options[0].title).toContain("Plan Plus");
-    expect(options[0].title).toContain("Al ritmo previsto");
+    // [Plan & Ritmo] info row — noop selectable
     expect(options[0].category).toBe("Plan & Ritmo");
-    expect(options[0].disabled).toBe(false);
+    expect(options[0].title).toContain("Codex Plus");
+    expect(options[0].title).toContain("Al ritmo previsto");
+    expect(options[0].title).not.toContain("\x1b[");
 
-    // Option 1: 5-Hour Window
-    expect(options[1].title).toContain("5h: 43%");
-    expect(options[1].description).toContain("2h 15m");
+    // [Límites de Cuota] 5h info row — noop selectable
     expect(options[1].category).toBe("Límites de Cuota");
-    expect(options[1].disabled).toBe(false);
+    expect(options[1].title).toContain("5h");
+    expect(options[1].title).toContain("43%");
+    expect(options[1].title).toContain("2h 15m");
+    expect(options[1].title).toContain("Libre: 58%"); // 57.5 rounds to 58
+    expect(options[1].title).not.toContain("\x1b[");
 
-    // Option 2: Weekly Window
-    expect(options[2].title).toContain("7d: 28%");
-    expect(options[2].description).toContain("2d 0h");
+    // [Límites de Cuota] 7d info row — noop selectable, credits in title
     expect(options[2].category).toBe("Límites de Cuota");
-    expect(options[2].disabled).toBe(false);
+    expect(options[2].title).toContain("7d");
+    expect(options[2].title).toContain("28%");
+    expect(options[2].title).toContain("2d 0h");
+    expect(options[2].title).toContain("Libre: 72%");
+    expect(options[2].title).toContain("⚡ 1 crédito");
+    expect(options[2].title).not.toContain("\x1b[");
 
-    // Option 3: Consume credit
-    expect(options[3].title).toBe("⚡ Canjear 1 Crédito de Reseteo");
+    // [Acciones] Consume — selectable
+    expect(options[3].category).toBe("Acciones");
+    expect(options[3].title).toBe("⚡  Canjear 1 Crédito de Reseteo");
     expect(options[3].description).toContain("1 crédito(s) disponibles");
-    expect(options[3].disabled).toBe(false);
     options[3].onSelect?.();
     expect(onConsume).toHaveBeenCalledTimes(1);
 
-    // Option 4: Refresh
+    // [Acciones] Refresh — selectable
+    expect(options[4].category).toBe("Acciones");
     expect(options[4].title).toContain("Sincronizar cuota ahora");
     options[4].onSelect?.();
     expect(onRefresh).toHaveBeenCalledTimes(1);
 
-    // Option 5: Close
+    // [Acciones] Close — selectable
+    expect(options[5].category).toBe("Acciones");
     expect(options[5].title).toContain("Cerrar");
     options[5].onSelect?.();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("should show close as last action and include credits in 7d row", () => {
+    const telemetry: QuotaTelemetry = {
+      primaryWindow: {
+        name: "5-hour",
+        usedPercent: 0,
+        remainingPercent: 100,
+        resetsAt: NOW + 4 * 3600 * 1000,
+      },
+      weeklyWindow: null,
+      availableResetCredits: 0,
+      lastUpdated: NOW,
+      planType: "plus",
+    };
+
+    const onConsume = vi.fn();
+    const onClose = vi.fn();
+
+    const options = buildQuotaCardOptions(telemetry, {
+      nowMs: NOW,
+      onConsume,
+      onClose,
+    });
+
+    // Plan row + 5h row + 2 actions (consume + close) = 4 (no weekly, no refresh)
+    expect(options.length).toBe(4);
+
+    const closeOpt = options.at(-1)!;
+    expect(closeOpt.title).toContain("Cerrar");
+    closeOpt.onSelect?.();
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
@@ -133,7 +173,7 @@ describe("buildUsageCardOptions", () => {
     expect(options[4].category).toBe("Diagnóstico del Sistema");
 
     // Diagnostics: Account
-    expect(options[5].title).toBe("Cuenta ChatGPT: Plan Plus");
+    expect(options[5].title).toBe("Cuenta ChatGPT: Plan Codex Plus");
     expect(options[5].category).toBe("Diagnóstico del Sistema");
 
     // Refresh action

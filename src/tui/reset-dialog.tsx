@@ -3,10 +3,7 @@ import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 import type { OpenCodeAuthProvider } from "../auth/provider.js";
 import type { CodexTelemetryClient } from "../telemetry/client.js";
 import type { ResetController } from "../actions/reset-controller.js";
-import {
-  buildQuotaCardOptions,
-  buildUsageCardOptions,
-} from "./dialog-options.js";
+import { buildQuotaCardOptions } from "./dialog-options.js";
 
 /**
  * Shows the Quota & Limits card dialog (`/codex-quota`).
@@ -109,61 +106,4 @@ export async function showQuotaDetailsDialog(
   ));
 }
 
-/**
- * Shows the Usage & Telemetry card dialog (`/codex-usage`).
- * Focuses on burn rate (pacing), analytical percentages, system health, and diagnostics.
- */
-export async function showUsageDetailsDialog(
-  api: TuiPluginApi,
-  authProvider: OpenCodeAuthProvider,
-  telemetryClient: CodexTelemetryClient,
-): Promise<void> {
-  const authResult = await authProvider.getCredentials();
-  if (authResult.status !== "valid") {
-    api.ui.toast({
-      variant: "error",
-      title: "Codex Usage",
-      message: `Authentication issue: ${authResult.status}`,
-    });
-    return;
-  }
 
-  const telemetry = await telemetryClient.getTelemetry(
-    authResult.credentials,
-    true,
-  );
-  if (!telemetry) {
-    api.ui.toast({
-      variant: "error",
-      title: "Codex Usage",
-      message: "Failed to retrieve telemetry data from ChatGPT backend",
-    });
-    return;
-  }
-
-  const handleRefresh = async () => {
-    api.ui.toast({
-      variant: "info",
-      title: "Codex Usage",
-      message: "Actualizando telemetría y diagnóstico...",
-    });
-    telemetryClient.invalidateCache();
-    await showUsageDetailsDialog(api, authProvider, telemetryClient);
-  };
-
-  const options = buildUsageCardOptions(telemetry, {
-    onRefresh: handleRefresh,
-    onClose: () => {
-      api.ui.dialog.clear();
-    },
-  });
-
-  api.ui.dialog.setSize("xlarge");
-  api.ui.dialog.replace(() => (
-    <api.ui.DialogSelect
-      title="OpenCode · Telemetría y Análisis de Consumo"
-      placeholder="Consulta telemetría detallada, velocidad y diagnósticos..."
-      options={options}
-    />
-  ));
-}

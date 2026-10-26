@@ -3,10 +3,7 @@ import type { TuiPluginApi, TuiCommand } from "@opencode-ai/plugin/tui";
 import type { OpenCodeAuthProvider } from "../auth/provider.js";
 import type { CodexTelemetryClient } from "../telemetry/client.js";
 import type { ResetController } from "../actions/reset-controller.js";
-import {
-  showQuotaDetailsDialog,
-  showUsageDetailsDialog,
-} from "./reset-dialog.js";
+import { showQuotaDetailsDialog } from "./reset-dialog.js";
 
 function debugLog(msg: string) {
   try {
@@ -47,29 +44,6 @@ export function createQuotaCommand(
   };
 }
 
-export function createUsageCommand(
-  api: TuiPluginApi,
-  authProvider: OpenCodeAuthProvider,
-  telemetryClient: CodexTelemetryClient,
-  _resetController?: ResetController,
-): TuiCommand {
-  return {
-    title: "Codex Usage: Análisis de telemetría y ritmo",
-    value: "codex.usage",
-    category: "Codex",
-    description:
-      "Desglose de telemetría: Velocidad de consumo, diagnósticos y conexión",
-    slash: {
-      name: "codex-usage",
-      aliases: ["usage"],
-    },
-    onSelect: () => {
-      debugLog("Command 'codex-usage' selected");
-      void showUsageDetailsDialog(api, authProvider, telemetryClient);
-    },
-  };
-}
-
 export function registerQuotaCommands(
   api: TuiPluginApi,
   authProvider: OpenCodeAuthProvider,
@@ -81,9 +55,8 @@ export function registerQuotaCommands(
     return undefined;
   }
 
-  debugLog("registerQuotaCommands: registering /codex-quota and /codex-usage");
+  debugLog("registerQuotaCommands: registering /codex-quota");
   return api.command.register(() => [
     createQuotaCommand(api, authProvider, telemetryClient, resetController),
-    createUsageCommand(api, authProvider, telemetryClient, resetController),
   ]);
 }

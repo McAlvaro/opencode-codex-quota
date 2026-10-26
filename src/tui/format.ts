@@ -2,6 +2,32 @@ import type { AuthStatus, QuotaTelemetry, QuotaWindow } from "../domain/models.j
 
 export type QuotaColor = "green" | "yellow" | "red" | "gray";
 
+export const ANSI_COLORS = {
+  green: "\x1b[32m",
+  yellow: "\x1b[33m",
+  red: "\x1b[31m",
+  gray: "\x1b[90m",
+  reset: "\x1b[39m",
+} as const;
+
+export function colorize(text: string, color: QuotaColor): string {
+  if (!text) return "";
+  const code = ANSI_COLORS[color] ?? ANSI_COLORS.gray;
+  return `${code}${text}${ANSI_COLORS.reset}`;
+}
+
+export function formatColoredProgressBar(
+  usedPercent: number = 0,
+  width: number = 10,
+  color?: QuotaColor,
+): string {
+  const bar = formatProgressBar(usedPercent, width);
+  const activeColor = color ?? getQuotaSeverity(usedPercent);
+  const filledPart = bar.filled ? colorize(bar.filled, activeColor) : "";
+  const emptyPart = bar.empty ? colorize(bar.empty, "gray") : "";
+  return `${filledPart}${emptyPart}`;
+}
+
 export interface WindowBadgeData {
   label: string;
   usedPercent: number;
@@ -40,13 +66,16 @@ export interface QuotaBadge {
 }
 
 export function formatPlanType(rawPlan?: string): string {
-  if (!rawPlan) return "Plus";
-  const normalized = rawPlan.toLowerCase().trim();
-  if (normalized === "plus") return "Plus";
-  if (normalized === "pro") return "Pro";
-  if (normalized === "team") return "Team";
-  if (normalized === "enterprise") return "Enterprise";
-  return rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1);
+  const normalize = (p?: string) => {
+    if (!p) return "Plus";
+    const normalized = p.toLowerCase().trim();
+    if (normalized === "plus") return "Plus";
+    if (normalized === "pro") return "Pro";
+    if (normalized === "team") return "Team";
+    if (normalized === "enterprise") return "Enterprise";
+    return p.charAt(0).toUpperCase() + p.slice(1);
+  };
+  return `Codex ${normalize(rawPlan)}`;
 }
 
 export function calculatePacing(

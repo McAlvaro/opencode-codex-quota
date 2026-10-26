@@ -1,8 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import {
-  showQuotaDetailsDialog,
-  showUsageDetailsDialog,
-} from "./reset-dialog.js";
+import { showQuotaDetailsDialog } from "./reset-dialog.js";
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 import type { OpenCodeAuthProvider } from "../auth/provider.js";
 import type { CodexTelemetryClient } from "../telemetry/client.js";
@@ -220,52 +217,4 @@ describe("showQuotaDetailsDialog", () => {
   });
 });
 
-describe("showUsageDetailsDialog", () => {
-  let mockApi: any;
-  let mockAuthProvider: any;
-  let mockTelemetryClient: any;
 
-  beforeEach(() => {
-    mockApi = {
-      ui: {
-        toast: vi.fn(),
-        dialog: {
-          replace: vi.fn(),
-          clear: vi.fn(),
-          setSize: vi.fn(),
-        },
-        DialogSelect: vi.fn((props) => ({ type: "DialogSelect", props })),
-      },
-    };
-
-    mockAuthProvider = {
-      getCredentials: vi.fn().mockResolvedValue({
-        status: "valid",
-        credentials: VALID_CREDS,
-      }),
-    };
-
-    mockTelemetryClient = {
-      getTelemetry: vi.fn().mockResolvedValue(SAMPLE_TELEMETRY),
-      invalidateCache: vi.fn(),
-    };
-  });
-
-  it("should open DialogSelect with usage options when invoked", async () => {
-    await showUsageDetailsDialog(
-      mockApi as TuiPluginApi,
-      mockAuthProvider as OpenCodeAuthProvider,
-      mockTelemetryClient as CodexTelemetryClient,
-    );
-
-    expect(mockApi.ui.dialog.setSize).toHaveBeenCalledWith("xlarge");
-    expect(mockApi.ui.dialog.replace).toHaveBeenCalledTimes(1);
-
-    const renderFn = mockApi.ui.dialog.replace.mock.calls[0][0];
-    const rendered = renderFn();
-
-    expect(mockApi.ui.DialogSelect).toHaveBeenCalled();
-    expect(rendered.props.title).toBe("OpenCode · Telemetría y Análisis de Consumo");
-    expect(rendered.props.options.length).toBeGreaterThan(0);
-  });
-});

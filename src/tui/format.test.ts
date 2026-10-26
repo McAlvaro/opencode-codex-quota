@@ -7,6 +7,8 @@ import {
   formatWindowData,
   calculatePacing,
   formatPlanType,
+  colorize,
+  formatColoredProgressBar,
 } from "./format.js";
 import type { QuotaTelemetry } from "../domain/models.js";
 
@@ -289,17 +291,33 @@ describe("TUI formatting helpers", () => {
   });
 
   describe("formatPlanType", () => {
-    it("should format known plans correctly", () => {
-      expect(formatPlanType("plus")).toBe("Plus");
-      expect(formatPlanType("pro")).toBe("Pro");
-      expect(formatPlanType("team")).toBe("Team");
-      expect(formatPlanType("enterprise")).toBe("Enterprise");
+    it("should format known plans correctly with Codex prefix", () => {
+      expect(formatPlanType("plus")).toBe("Codex Plus");
+      expect(formatPlanType("pro")).toBe("Codex Pro");
+      expect(formatPlanType("team")).toBe("Codex Team");
+      expect(formatPlanType("enterprise")).toBe("Codex Enterprise");
     });
 
-    it("should default to Plus when plan is unknown or missing", () => {
-      expect(formatPlanType(undefined)).toBe("Plus");
-      expect(formatPlanType("")).toBe("Plus");
-      expect(formatPlanType("custom_plan")).toBe("Custom_plan");
+    it("should default to Codex Plus when plan is unknown or missing", () => {
+      expect(formatPlanType(undefined)).toBe("Codex Plus");
+      expect(formatPlanType("")).toBe("Codex Plus");
+      expect(formatPlanType("custom_plan")).toBe("Codex Custom_plan");
+    });
+  });
+
+  describe("colorize and formatColoredProgressBar", () => {
+    it("should wrap text with ANSI color codes and reset", () => {
+      expect(colorize("test", "green")).toBe("\x1b[32mtest\x1b[39m");
+      expect(colorize("test", "yellow")).toBe("\x1b[33mtest\x1b[39m");
+      expect(colorize("test", "red")).toBe("\x1b[31mtest\x1b[39m");
+      expect(colorize("test", "gray")).toBe("\x1b[90mtest\x1b[39m");
+      expect(colorize("", "green")).toBe("");
+    });
+
+    it("should format colored progress bar with filled color and gray empty", () => {
+      const colored = formatColoredProgressBar(30, 10, "green");
+      expect(colored).toContain("\x1b[32m━━━\x1b[39m");
+      expect(colored).toContain("\x1b[90m───────\x1b[39m");
     });
   });
 

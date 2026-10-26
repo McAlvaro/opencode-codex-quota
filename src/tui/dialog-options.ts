@@ -1,10 +1,11 @@
 import type { TuiDialogSelectOption } from "@opencode-ai/plugin/tui";
 import type { QuotaTelemetry } from "../domain/models.js";
 import {
-  formatTimeRemaining,
   formatPlanType,
   calculatePacing,
+  formatTimeRemaining,
   formatProgressBar,
+  type PacingStatus,
 } from "./format.js";
 
 export interface BuildQuotaOptionsContext {
@@ -22,7 +23,8 @@ export interface BuildUsageOptionsContext {
 
 /**
  * Builds options for `/codex-quota` (Cuota y Límites):
- * Focused on capacity, visual gauges, remaining headroom, and reset redemption.
+ * Info rows use noop onSelect so they appear in the list but do nothing.
+ * Action rows have real handlers. All text is plain Unicode (no ANSI codes).
  */
 export function buildQuotaCardOptions(
   telemetry: QuotaTelemetry,
@@ -32,7 +34,7 @@ export function buildQuotaCardOptions(
   const options: TuiDialogSelectOption<string>[] = [];
 
   const plan = formatPlanType(telemetry.planType);
-  const pacing = telemetry.primaryWindow
+  const pacing: PacingStatus = telemetry.primaryWindow
     ? calculatePacing(
         telemetry.primaryWindow.usedPercent,
         telemetry.primaryWindow.resetsAt,
@@ -41,78 +43,76 @@ export function buildQuotaCardOptions(
       )
     : { text: "Al ritmo previsto", color: "green" };
 
-  // Plan & Pacing summary
+  const credits = telemetry.availableResetCredits;
+
+  // ── [Plan & Ritmo] ──────────────────────────────────────
+  // "Codex Plus  ·  Al ritmo previsto"
   options.push({
-    title: `Plan ${plan} · ${pacing.text}`,
-    value: "quota_plan",
-    description: "Ritmo de consumo saludable en tus ventanas",
+    title: `${plan}  ·  ${pacing.text}`,
+    value: "info_plan",
     category: "Plan & Ritmo",
-    disabled: false,
     onSelect: () => {},
   });
 
-  // Primary 5-hour window
+  // ── [Límites de Cuota] ───────────────────────────────────
+  // "5h  ━━━━━━────────  46%   Resetea en 2h 35m  ·  Libre: 54%"
   if (telemetry.primaryWindow) {
     const pw = telemetry.primaryWindow;
+    const bar = formatProgressBar(pw.usedPercent, 14);
     const timeRemaining = formatTimeRemaining(pw.resetsAt, now);
-    const bar = formatProgressBar(pw.usedPercent, 10);
+    const pct = String(Math.round(pw.usedPercent)).padStart(3);
+    const free = Math.round(pw.remainingPercent);
     options.push({
-      title: `5h: ${pw.usedPercent.toFixed(0).padStart(2, " ")}% ${bar.full}`,
-      value: "quota_5h",
-      description: `Resetea en ${timeRemaining} · Libre: ${pw.remainingPercent.toFixed(0)}%`,
+      title: `5h  ${bar.full}  ${pct}%   Resetea en ${timeRemaining}  ·  Libre: ${free}%`,
+      value: "info_5h",
       category: "Límites de Cuota",
-      disabled: false,
       onSelect: () => {},
     });
   }
 
-  // Weekly window
+  // "7d  ━─────────────   7%   Resetea en 6d 10h  ·  Libre: 93%  ·  ⚡ 0"
   if (telemetry.weeklyWindow) {
     const ww = telemetry.weeklyWindow;
+    const bar = formatProgressBar(ww.usedPercent, 14);
     const timeRemaining = formatTimeRemaining(ww.resetsAt, now);
-    const bar = formatProgressBar(ww.usedPercent, 10);
+    const pct = String(Math.round(ww.usedPercent)).padStart(3);
+    const free = Math.round(ww.remainingPercent);
+    const creditSuffix = `  ·  ⚡ ${credits} ${credits === 1 ? "crédito" : "créditos"}`;
     options.push({
-      title: `7d: ${ww.usedPercent.toFixed(0).padStart(2, " ")}% ${bar.full}`,
-      value: "quota_7d",
-      description: `Resetea en ${timeRemaining} · Libre: ${ww.remainingPercent.toFixed(0)}%`,
+      title: `7d  ${bar.full}  ${pct}%   Resetea en ${timeRemaining}  ·  Libre: ${free}%${creditSuffix}`,
+      value: "info_7d",
       category: "Límites de Cuota",
-      disabled: false,
       onSelect: () => {},
     });
   }
 
-  // Redeem Reset Credit action
-  const credits = telemetry.availableResetCredits;
+  // ── [Acciones] ───────────────────────────────────────────
   options.push({
-    title: "⚡ Canjear 1 Crédito de Reseteo",
+    title: "⚡  Canjear 1 Crédito de Reseteo",
     value: "consume",
     description:
       credits > 0
-        ? `${credits} crédito(s) disponibles para resetear 5h`
+        ? `${credits} crédito(s) disponibles — reinicia la ventana de 5h a 0%`
         : "Sin créditos de reseteo disponibles en esta cuenta",
     category: "Acciones",
-    disabled: false,
     onSelect: ctx.onConsume,
   });
 
-  // Refresh action
   if (ctx.onRefresh) {
     options.push({
-      title: "🔄 Sincronizar cuota ahora",
+      title: "🔄  Sincronizar cuota ahora",
       value: "refresh",
       description: "Actualizar límites y métricas con ChatGPT",
       category: "Acciones",
-      disabled: false,
       onSelect: ctx.onRefresh,
     });
   }
 
-  // Close option
   options.push({
-    title: "✕ Cerrar",
+    title: "✕  Cerrar",
     value: "close",
+    description: "Cerrar esta ventana",
     category: "Acciones",
-    disabled: false,
     onSelect: ctx.onClose,
   });
 
@@ -131,7 +131,7 @@ export function buildUsageCardOptions(
   const options: TuiDialogSelectOption<string>[] = [];
 
   const plan = formatPlanType(telemetry.planType);
-  const pacing = telemetry.primaryWindow
+  const pacing: PacingStatus = telemetry.primaryWindow
     ? calculatePacing(
         telemetry.primaryWindow.usedPercent,
         telemetry.primaryWindow.resetsAt,

@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   createQuotaCommand,
-  createUsageCommand,
   registerQuotaCommands,
 } from "./commands.js";
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
@@ -11,7 +10,6 @@ import type { ResetController } from "../actions/reset-controller.js";
 
 vi.mock("./reset-dialog.js", () => ({
   showQuotaDetailsDialog: vi.fn(),
-  showUsageDetailsDialog: vi.fn(),
 }));
 
 describe("TUI Commands", () => {
@@ -57,32 +55,8 @@ describe("TUI Commands", () => {
     });
   });
 
-  describe("createUsageCommand", () => {
-    it("should return the /codex-usage command metadata", async () => {
-      const cmd = createUsageCommand(
-        mockApi,
-        mockAuthProvider,
-        mockTelemetryClient,
-        mockResetController,
-      );
-
-      expect(cmd.value).toBe("codex.usage");
-      expect(cmd.slash?.name).toBe("codex-usage");
-      expect(cmd.slash?.aliases).toContain("usage");
-      expect(typeof cmd.onSelect).toBe("function");
-
-      cmd.onSelect?.();
-      const { showUsageDetailsDialog } = await import("./reset-dialog.js");
-      expect(showUsageDetailsDialog).toHaveBeenCalledWith(
-        mockApi,
-        mockAuthProvider,
-        mockTelemetryClient,
-      );
-    });
-  });
-
   describe("registerQuotaCommands", () => {
-    it("should register both /codex-quota and /codex-usage through api.command.register", () => {
+    it("should register /codex-quota through api.command.register", () => {
       let registeredCommands: any[] = [];
       const apiWithCommand = {
         command: {
@@ -102,9 +76,8 @@ describe("TUI Commands", () => {
 
       expect(unregister).toBeDefined();
       expect(apiWithCommand.command?.register).toHaveBeenCalledTimes(1);
-      expect(registeredCommands.length).toBe(2);
+      expect(registeredCommands.length).toBe(1);
       expect(registeredCommands[0].slash?.name).toBe("codex-quota");
-      expect(registeredCommands[1].slash?.name).toBe("codex-usage");
     });
 
     it("should return undefined if api.command is absent", () => {
