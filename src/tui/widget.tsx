@@ -36,9 +36,13 @@ let pollTimer: NodeJS.Timeout | null = null;
 export function getOrCreateSharedBadgeSignal() {
   if (!sharedBadge || !setSharedBadge) {
     const [b, setB] = createSignal<QuotaBadge>({
-      text: "[Codex: ...]",
+      text: "Codex · ...",
       color: "gray",
       barText: "",
+      filledBar: "",
+      emptyBar: "",
+      prefixText: "Codex",
+      metaText: " · ...",
     });
     sharedBadge = b;
     setSharedBadge = setB;
@@ -82,7 +86,15 @@ export async function updateQuotaBadge(
     debugLog(
       `update error: ${err instanceof Error ? err.stack : String(err)}`,
     );
-    setBadge({ text: "[Codex: Err]", color: "red", barText: "" });
+    setBadge({
+      text: "Codex · Err",
+      color: "red",
+      barText: "",
+      filledBar: "",
+      emptyBar: "",
+      prefixText: "Codex",
+      metaText: " · Err",
+    });
   }
 }
 
@@ -137,23 +149,57 @@ export function CodexQuotaWidget(props: CodexQuotaWidgetProps) {
 
   const displayBadge = props.badge ?? badge;
 
-  const textProps = Object.create(null);
-  Object.defineProperty(textProps, "fg", {
+  // Row 1: Gauge (Filled bar in accent color, Empty track in subtle gray)
+  const barFilledProps = Object.create(null);
+  Object.defineProperty(barFilledProps, "fg", {
     get() {
       return isVisible() ? displayBadge().color : "gray";
     },
     enumerable: true,
   });
-  textProps.children = () => (isVisible() ? displayBadge().text : "");
+  barFilledProps.children = () =>
+    isVisible() ? (displayBadge().filledBar ?? "") : "";
 
-  const barProps = Object.create(null);
-  Object.defineProperty(barProps, "fg", {
+  const barEmptyProps = Object.create(null);
+  barEmptyProps.fg = "gray";
+  barEmptyProps.children = () =>
+    isVisible() ? (displayBadge().emptyBar ?? "") : "";
+
+  const row1Props = Object.create(null);
+  row1Props.flexDirection = "row";
+  Object.defineProperty(row1Props, "visible", {
+    get() {
+      return isVisible() && Boolean(displayBadge().barText);
+    },
+    enumerable: true,
+  });
+  row1Props.children = [
+    _jsx("text", barFilledProps),
+    _jsx("text", barEmptyProps),
+  ];
+
+  // Row 2: Metrics line (Prefix in accent color, Metadata in subtle gray)
+  const textPrefixProps = Object.create(null);
+  Object.defineProperty(textPrefixProps, "fg", {
     get() {
       return isVisible() ? displayBadge().color : "gray";
     },
     enumerable: true,
   });
-  barProps.children = () => (isVisible() ? (displayBadge().barText ?? "") : "");
+  textPrefixProps.children = () =>
+    isVisible() ? (displayBadge().prefixText ?? displayBadge().text) : "";
+
+  const textMetaProps = Object.create(null);
+  textMetaProps.fg = "gray";
+  textMetaProps.children = () =>
+    isVisible() ? (displayBadge().metaText ?? "") : "";
+
+  const row2Props = Object.create(null);
+  row2Props.flexDirection = "row";
+  row2Props.children = [
+    _jsx("text", textPrefixProps),
+    _jsx("text", textMetaProps),
+  ];
 
   const boxProps = Object.create(null);
   boxProps.flexDirection = "column";
@@ -163,7 +209,7 @@ export function CodexQuotaWidget(props: CodexQuotaWidgetProps) {
     },
     enumerable: true,
   });
-  boxProps.children = [_jsx("text", barProps), _jsx("text", textProps)];
+  boxProps.children = [_jsx("box", row1Props), _jsx("box", row2Props)];
 
   return _jsx("box", boxProps);
 }

@@ -6,17 +6,33 @@ export interface QuotaBadge {
   text: string;
   color: QuotaColor;
   barText: string;
+  filledBar: string;
+  emptyBar: string;
+  prefixText: string;
+  metaText: string;
+}
+
+export interface ProgressBarResult {
+  filled: string;
+  empty: string;
+  full: string;
 }
 
 export function formatProgressBar(
   usedPercent: number = 0,
-  width: number = 26,
-): string {
+  width: number = 24,
+): ProgressBarResult {
   const safePercent = Number.isFinite(usedPercent) ? usedPercent : 0;
   const clamped = Math.max(0, Math.min(100, safePercent));
   const filledCount = Math.round((clamped / 100) * width);
   const emptyCount = Math.max(0, width - filledCount);
-  return `[${"█".repeat(filledCount)}${"░".repeat(emptyCount)}]`;
+  const filled = "━".repeat(filledCount);
+  const empty = "─".repeat(emptyCount);
+  return {
+    filled,
+    empty,
+    full: `${filled}${empty}`,
+  };
 }
 
 export function formatTimeRemaining(resetsAtMs: number, nowMs: number): string {
@@ -59,28 +75,74 @@ export function formatBadge(
 ): QuotaBadge {
   switch (authStatus) {
     case "missing-file":
-      return { text: "[Codex: No Auth]", color: "gray", barText: "" };
+      return {
+        text: "Codex · No Auth",
+        color: "gray",
+        barText: "",
+        filledBar: "",
+        emptyBar: "",
+        prefixText: "Codex",
+        metaText: " · No Auth",
+      };
     case "missing-openai":
-      return { text: "[Codex: Off]", color: "gray", barText: "" };
+      return {
+        text: "Codex · Off",
+        color: "gray",
+        barText: "",
+        filledBar: "",
+        emptyBar: "",
+        prefixText: "Codex",
+        metaText: " · Off",
+      };
     case "expired":
-      return { text: "[Codex: Expired]", color: "red", barText: "" };
+      return {
+        text: "Codex · Expired",
+        color: "red",
+        barText: "",
+        filledBar: "",
+        emptyBar: "",
+        prefixText: "Codex",
+        metaText: " · Expired",
+      };
     case "invalid-schema":
-      return { text: "[Codex: Invalid]", color: "red", barText: "" };
+      return {
+        text: "Codex · Invalid",
+        color: "red",
+        barText: "",
+        filledBar: "",
+        emptyBar: "",
+        prefixText: "Codex",
+        metaText: " · Invalid",
+      };
     case "valid":
     default:
       break;
   }
 
   if (!telemetry) {
-    return { text: "[Codex: ...]", color: "gray", barText: "" };
+    return {
+      text: "Codex · ...",
+      color: "gray",
+      barText: "",
+      filledBar: "",
+      emptyBar: "",
+      prefixText: "Codex",
+      metaText: " · ...",
+    };
   }
 
   const primary = telemetry.primaryWindow;
   if (!primary) {
+    const credits = telemetry.availableResetCredits;
+    const bar = formatProgressBar(0, 24);
     return {
-      text: `[Codex: Active | ⚡ ${telemetry.availableResetCredits}]`,
+      text: `Codex · Active · ⚡ ${credits}`,
       color: "green",
-      barText: formatProgressBar(0),
+      barText: bar.full,
+      filledBar: bar.filled,
+      emptyBar: bar.empty,
+      prefixText: "Codex",
+      metaText: ` · Active · ⚡ ${credits}`,
     };
   }
 
@@ -88,11 +150,15 @@ export function formatBadge(
   const timeStr = formatTimeRemaining(primary.resetsAt, nowMs);
   const credits = telemetry.availableResetCredits;
   const color = getQuotaSeverity(usedRounded);
-  const barText = formatProgressBar(primary.usedPercent);
+  const bar = formatProgressBar(primary.usedPercent, 24);
 
   return {
-    text: `[Codex: ${usedRounded}% | ⏳ ${timeStr} | ⚡ ${credits}]`,
+    text: `Codex ${usedRounded}% · ⏳ ${timeStr} · ⚡ ${credits}`,
     color,
-    barText,
+    barText: bar.full,
+    filledBar: bar.filled,
+    emptyBar: bar.empty,
+    prefixText: `Codex ${usedRounded}%`,
+    metaText: ` · ⏳ ${timeStr} · ⚡ ${credits}`,
   };
 }

@@ -9,7 +9,10 @@ vi.mock("./widget.js", () => ({
 }));
 
 describe("registerQuotaSlots", () => {
-  it("should register sidebar_footer and session_prompt_right slots on api.slots", () => {
+  const mockAuthProvider = {} as OpenCodeAuthProvider;
+  const mockTelemetryClient = {} as CodexTelemetryClient;
+
+  it("should register sidebar_footer slot by default to avoid duplicate rendering", () => {
     let capturedPlugin: any = null;
 
     const mockApi = {
@@ -21,9 +24,6 @@ describe("registerQuotaSlots", () => {
       },
     } as unknown as TuiPluginApi;
 
-    const mockAuthProvider = {} as OpenCodeAuthProvider;
-    const mockTelemetryClient = {} as CodexTelemetryClient;
-
     const regId = registerQuotaSlots(mockApi, mockAuthProvider, mockTelemetryClient, {
       pollIntervalMs: 15_000,
     });
@@ -32,9 +32,8 @@ describe("registerQuotaSlots", () => {
     expect(mockApi.slots.register).toHaveBeenCalledTimes(1);
     expect(capturedPlugin).toBeDefined();
     expect(typeof capturedPlugin.slots.sidebar_footer).toBe("function");
-    expect(typeof capturedPlugin.slots.session_prompt_right).toBe("function");
+    expect(capturedPlugin.slots.session_prompt_right).toBeUndefined();
 
-    // Invoking the slot renderers calls the component with expected props
     const footerElement = capturedPlugin.slots.sidebar_footer({
       session_id: "test-sess",
     });
@@ -48,19 +47,45 @@ describe("registerQuotaSlots", () => {
         pollIntervalMs: 15_000,
       },
     });
+  });
 
-    const promptElement = capturedPlugin.slots.session_prompt_right({
-      session_id: "test-sess",
-    });
-    expect(promptElement).toEqual({
-      type: "CodexQuotaWidget",
-      props: {
-        api: mockApi,
-        sessionID: "test-sess",
-        authProvider: mockAuthProvider,
-        telemetryClient: mockTelemetryClient,
-        pollIntervalMs: 15_000,
+  it("should register both slots when slot option is 'both'", () => {
+    let capturedPlugin: any = null;
+
+    const mockApi = {
+      slots: {
+        register: vi.fn().mockImplementation((plugin) => {
+          capturedPlugin = plugin;
+          return "quota-slot-reg-id";
+        }),
       },
+    } as unknown as TuiPluginApi;
+
+    registerQuotaSlots(mockApi, mockAuthProvider, mockTelemetryClient, {
+      slot: "both",
     });
+
+    expect(typeof capturedPlugin.slots.sidebar_footer).toBe("function");
+    expect(typeof capturedPlugin.slots.session_prompt_right).toBe("function");
+  });
+
+  it("should register only session_prompt_right when specified", () => {
+    let capturedPlugin: any = null;
+
+    const mockApi = {
+      slots: {
+        register: vi.fn().mockImplementation((plugin) => {
+          capturedPlugin = plugin;
+          return "quota-slot-reg-id";
+        }),
+      },
+    } as unknown as TuiPluginApi;
+
+    registerQuotaSlots(mockApi, mockAuthProvider, mockTelemetryClient, {
+      slot: "session_prompt_right",
+    });
+
+    expect(capturedPlugin.slots.sidebar_footer).toBeUndefined();
+    expect(typeof capturedPlugin.slots.session_prompt_right).toBe("function");
   });
 });

@@ -55,36 +55,40 @@ describe("TUI formatting helpers", () => {
 
   describe("formatProgressBar", () => {
     it("should format empty bar for 0% usage", () => {
-      expect(formatProgressBar(0, 26)).toBe(
-        `[${"░".repeat(26)}]`,
-      );
+      const res = formatProgressBar(0, 24);
+      expect(res.filled).toBe("");
+      expect(res.empty).toBe("─".repeat(24));
+      expect(res.full).toBe("─".repeat(24));
     });
 
     it("should format full bar for 100% usage", () => {
-      expect(formatProgressBar(100, 26)).toBe(
-        `[${"█".repeat(26)}]`,
-      );
+      const res = formatProgressBar(100, 24);
+      expect(res.filled).toBe("━".repeat(24));
+      expect(res.empty).toBe("");
+      expect(res.full).toBe("━".repeat(24));
     });
 
     it("should format proportional blocks for partial usage (50%)", () => {
-      expect(formatProgressBar(50, 26)).toBe(
-        `[${"█".repeat(13)}${"░".repeat(13)}]`,
-      );
+      const res = formatProgressBar(50, 24);
+      expect(res.filled).toBe("━".repeat(12));
+      expect(res.empty).toBe("─".repeat(12));
+      expect(res.full).toBe("━".repeat(12) + "─".repeat(12));
     });
 
     it("should clamp values below 0 and above 100", () => {
-      expect(formatProgressBar(-10, 26)).toBe(
-        `[${"░".repeat(26)}]`,
-      );
-      expect(formatProgressBar(150, 26)).toBe(
-        `[${"█".repeat(26)}]`,
-      );
+      const below = formatProgressBar(-10, 24);
+      expect(below.filled).toBe("");
+      expect(below.empty).toBe("─".repeat(24));
+
+      const above = formatProgressBar(150, 24);
+      expect(above.filled).toBe("━".repeat(24));
+      expect(above.empty).toBe("");
     });
 
     it("should handle non-finite numbers safely", () => {
-      expect(formatProgressBar(NaN, 26)).toBe(
-        `[${"░".repeat(26)}]`,
-      );
+      const nanRes = formatProgressBar(NaN, 24);
+      expect(nanRes.filled).toBe("");
+      expect(nanRes.empty).toBe("─".repeat(24));
     });
   });
 
@@ -94,45 +98,65 @@ describe("TUI formatting helpers", () => {
     it("should return No Auth badge when auth file is missing", () => {
       const badge = formatBadge(null, "missing-file", NOW);
       expect(badge).toEqual({
-        text: "[Codex: No Auth]",
+        text: "Codex · No Auth",
         color: "gray",
         barText: "",
+        filledBar: "",
+        emptyBar: "",
+        prefixText: "Codex",
+        metaText: " · No Auth",
       });
     });
 
     it("should return Off badge when openai key is missing", () => {
       const badge = formatBadge(null, "missing-openai", NOW);
       expect(badge).toEqual({
-        text: "[Codex: Off]",
+        text: "Codex · Off",
         color: "gray",
         barText: "",
+        filledBar: "",
+        emptyBar: "",
+        prefixText: "Codex",
+        metaText: " · Off",
       });
     });
 
     it("should return Expired badge with red color when token is expired", () => {
       const badge = formatBadge(null, "expired", NOW);
       expect(badge).toEqual({
-        text: "[Codex: Expired]",
+        text: "Codex · Expired",
         color: "red",
         barText: "",
+        filledBar: "",
+        emptyBar: "",
+        prefixText: "Codex",
+        metaText: " · Expired",
       });
     });
 
     it("should return Invalid badge when schema is invalid", () => {
       const badge = formatBadge(null, "invalid-schema", NOW);
       expect(badge).toEqual({
-        text: "[Codex: Invalid]",
+        text: "Codex · Invalid",
         color: "red",
         barText: "",
+        filledBar: "",
+        emptyBar: "",
+        prefixText: "Codex",
+        metaText: " · Invalid",
       });
     });
 
     it("should return placeholder when telemetry is null but auth is valid", () => {
       const badge = formatBadge(null, "valid", NOW);
       expect(badge).toEqual({
-        text: "[Codex: ...]",
+        text: "Codex · ...",
         color: "gray",
         barText: "",
+        filledBar: "",
+        emptyBar: "",
+        prefixText: "Codex",
+        metaText: " · ...",
       });
     });
 
@@ -145,10 +169,15 @@ describe("TUI formatting helpers", () => {
       };
 
       const badge = formatBadge(telemetry, "valid", NOW);
+      const bar = formatProgressBar(0, 24);
       expect(badge).toEqual({
-        text: "[Codex: Active | ⚡ 3]",
+        text: "Codex · Active · ⚡ 3",
         color: "green",
-        barText: formatProgressBar(0),
+        barText: bar.full,
+        filledBar: bar.filled,
+        emptyBar: bar.empty,
+        prefixText: "Codex",
+        metaText: " · Active · ⚡ 3",
       });
     });
 
@@ -166,10 +195,15 @@ describe("TUI formatting helpers", () => {
       };
 
       const badge = formatBadge(telemetry, "valid", NOW);
+      const bar = formatProgressBar(42.4, 24);
       expect(badge).toEqual({
-        text: "[Codex: 42% | ⏳ 2h 15m | ⚡ 1]",
+        text: "Codex 42% · ⏳ 2h 15m · ⚡ 1",
         color: "green",
-        barText: formatProgressBar(42.4),
+        barText: bar.full,
+        filledBar: bar.filled,
+        emptyBar: bar.empty,
+        prefixText: "Codex 42%",
+        metaText: " · ⏳ 2h 15m · ⚡ 1",
       });
     });
 
@@ -187,10 +221,15 @@ describe("TUI formatting helpers", () => {
       };
 
       const badge = formatBadge(telemetry, "valid", NOW);
+      const bar = formatProgressBar(75, 24);
       expect(badge).toEqual({
-        text: "[Codex: 75% | ⏳ 30m | ⚡ 0]",
+        text: "Codex 75% · ⏳ 30m · ⚡ 0",
         color: "yellow",
-        barText: formatProgressBar(75),
+        barText: bar.full,
+        filledBar: bar.filled,
+        emptyBar: bar.empty,
+        prefixText: "Codex 75%",
+        metaText: " · ⏳ 30m · ⚡ 0",
       });
     });
 
@@ -208,10 +247,15 @@ describe("TUI formatting helpers", () => {
       };
 
       const badge = formatBadge(telemetry, "valid", NOW);
+      const bar = formatProgressBar(90, 24);
       expect(badge).toEqual({
-        text: "[Codex: 90% | ⏳ 10m | ⚡ 2]",
+        text: "Codex 90% · ⏳ 10m · ⚡ 2",
         color: "red",
-        barText: formatProgressBar(90),
+        barText: bar.full,
+        filledBar: bar.filled,
+        emptyBar: bar.empty,
+        prefixText: "Codex 90%",
+        metaText: " · ⏳ 10m · ⚡ 2",
       });
     });
   });
