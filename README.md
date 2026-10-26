@@ -19,52 +19,67 @@ When using OpenCode with ChatGPT / OpenAI Codex subscription credentials, agenti
 - [Technical Specification & API Contracts](docs/SPECIFICATION.md)
 - [Implementation Roadmap & Tasks](docs/PLANNING.md)
 
-## Installation & Setup
+## Installation
 
-### Option 1: Install into OpenCode Plugins Directory (Recommended)
+Add the plugin to your OpenCode configuration file (typically located at `~/.config/opencode/opencode.json`):
 
-1. Clone the repository into your OpenCode plugins folder:
-   ```bash
-   git clone https://github.com/McAlvaro/opencode-codex-quota.git ~/.config/opencode/plugins/opencode-codex-quota
-   ```
+### Direct from GitHub
 
-2. Install dependencies and build:
-   ```bash
-   cd ~/.config/opencode/plugins/opencode-codex-quota
-   npm install
-   npm run build
-   ```
+#### OpenCode V1:
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-codex-quota@github:McAlvaro/opencode-codex-quota"]
+}
+```
 
-3. Register the plugin in `~/.config/opencode/tui.jsonc` (or project-level `.opencode/tui.jsonc`):
-   ```jsonc
-   {
-     "$schema": "https://opencode.ai/tui.json",
-     "plugins": [
-       "file://~/.config/opencode/plugins/opencode-codex-quota/dist/index.js"
-     ]
-   }
-   ```
+#### OpenCode V2:
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": ["opencode-codex-quota@github:McAlvaro/opencode-codex-quota"]
+}
+```
 
-*(Note: Replace `~` with your absolute home path if your environment requires absolute URIs, e.g. `file:///home/username/...`)*
+---
 
-### Option 2: Clone Anywhere & Link
+### From npm (once published)
 
-If you already cloned the repository elsewhere:
+#### OpenCode V1:
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-codex-quota@latest"]
+}
+```
+
+#### OpenCode V2:
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": ["opencode-codex-quota@latest"]
+}
+```
+
+---
+
+### Local / Manual Installation
+
+If you prefer to clone and link locally:
 
 ```bash
-git clone https://github.com/McAlvaro/opencode-codex-quota.git
-cd opencode-codex-quota
+git clone https://github.com/McAlvaro/opencode-codex-quota.git ~/.config/opencode/plugins/opencode-codex-quota
+cd ~/.config/opencode/plugins/opencode-codex-quota
 npm install
 npm run build
 ```
 
-Then add the absolute path to your `dist/index.js` into `tui.jsonc`:
-
+Then register it in your `~/.config/opencode/tui.jsonc`:
 ```jsonc
 {
   "$schema": "https://opencode.ai/tui.json",
   "plugins": [
-    "file:///absolute/path/to/opencode-codex-quota/dist/index.js"
+    "file://~/.config/opencode/plugins/opencode-codex-quota/dist/index.js"
   ]
 }
 ```
