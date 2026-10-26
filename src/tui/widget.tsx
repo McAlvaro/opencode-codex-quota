@@ -136,10 +136,10 @@ export function CodexQuotaWidget(props: CodexQuotaWidgetProps) {
   const displayBadge = props.badge ?? badge;
 
   return (
-    <Show when={isVisible()}>
-      <box flexDirection="row">
-        <text fg={displayBadge().color}>{displayBadge().text}</text>
-      </box>
-    </Show>
+    <box flexDirection="row">
+      <text fg={isVisible() ? displayBadge().color : "gray"}>
+        {isVisible() ? displayBadge().text : ""}
+      </text>
+    </box>
   );
 }

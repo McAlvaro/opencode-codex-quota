@@ -42,31 +42,25 @@ export function isModelOpenAI(candidate?: ModelRefCandidate | null): boolean {
   );
 }
 
+function debugLog(msg: string) {
+  try {
+    fs.appendFileSync(
+      "/tmp/opencode-quota-debug.log",
+      `[${new Date().toISOString()}] ${msg}\n`,
+    );
+  } catch {
+    // Ignore logging failures
+  }
+}
+
 export function resolveActiveModel(
   api?: TuiPluginApi,
   sessionID?: string,
 ): ModelRefCandidate | null {
   if (!api) return null;
 
-  // 1. Session-level model (highest priority)
-  const sid =
-    sessionID ??
-    (api.route?.current?.name === "session"
-      ? (api.route.current.params as Record<string, unknown> | undefined)
-          ?.sessionID
-      : undefined);
-
-  if (typeof sid === "string" && api.state?.session?.get) {
-    const session = api.state.session.get(sid);
-    if (session?.model) {
-      return {
-        providerID: session.model.providerID,
-        modelID: session.model.id,
-      };
-    }
-  }
-
-  // 2. OpenCode state-level model.json (~/.local/state/opencode/model.json)
+  // 1. OpenCode state-level model.json (~/.local/state/opencode/model.json)
+  // This reflects the active/recent model selection in the TUI prompt in real time
   const stateDir =
     api.state?.path?.state ??
     path.join(os.homedir(), ".local", "state", "opencode");
@@ -88,6 +82,24 @@ export function resolveActiveModel(
     }
   } catch {
     // Ignore file read or parse issues
+  }
+
+  // 2. Session-level model
+  const sid =
+    sessionID ??
+    (api.route?.current?.name === "session"
+      ? (api.route.current.params as Record<string, unknown> | undefined)
+          ?.sessionID
+      : undefined);
+
+  if (typeof sid === "string" && api.state?.session?.get) {
+    const session = api.state.session.get(sid);
+    if (session?.model) {
+      return {
+        providerID: session.model.providerID,
+        modelID: session.model.id,
+      };
+    }
   }
 
   // 3. Config-level fallback (config.model)
@@ -137,29 +149,31 @@ export function createIsOpenAISignal(
 ): Accessor<boolean> {
   const { model } = getOrCreateActiveModelSignal(api);
   return createMemo(() => {
-    if (sessionID && api?.state?.session?.get) {
-      const s = api.state.session.get(sessionID);
-      if (s?.model) {
-        return isModelOpenAI(s.model);
-      }
-    }
-    return isModelOpenAI(model());
+    const m = model();
+    return isModelOpenAI(m);
   });
 }
 
 export function initModelWatcher(api: TuiPluginApi): () => void {
   const { setModel } = getOrCreateActiveModelSignal(api);
 
+  let lastSignature = "";
+
   const check = () => {
     const current = resolveActiveModel(api);
-    setModel(current);
+    const sig = JSON.stringify(current);
+    if (sig !== lastSignature) {
+      lastSignature = sig;
+      debugLog(`Model changed: ${sig}, isOpenAI: ${isModelOpenAI(current)}`);
+      setModel(current);
+    }
   };
 
   // Immediate check
   check();
 
-  // Polling check every 500ms for file-level or state-level model changes
-  const timer = setInterval(check, 500);
+  // Polling check every 300ms for file-level or state-level model changes
+  const timer = setInterval(check, 300);
 
   // Subscribe to OpenCode event bus
   const unsubs: Array<() => void> = [];
@@ -168,10 +182,13 @@ export function initModelWatcher(api: TuiPluginApi): () => void {
       unsubs.push(
         api.event.on("session.next.model.switched" as any, (evt: any) => {
           if (evt?.properties?.model) {
-            setModel({
+            const m = {
               providerID: evt.properties.model.providerID,
               modelID: evt.properties.model.id,
-            });
+            };
+            lastSignature = JSON.stringify(m);
+            debugLog(`Event session.next.model.switched: ${lastSignature}`);
+            setModel(m);
           } else {
             check();
           }
@@ -192,7 +209,7 @@ export function initModelWatcher(api: TuiPluginApi): () => void {
 
   try {
     if (fs.existsSync(modelJsonPath)) {
-      fs.watchFile(modelJsonPath, { interval: 300 }, () => {
+      fs.watchFile(modelJsonPath, { interval: 200 }, () => {
         check();
       });
     }
