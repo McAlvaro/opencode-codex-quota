@@ -50,6 +50,7 @@ export interface QuotaTelemetry {
   weeklyWindow: QuotaWindow | null;
   availableResetCredits: number;
   lastUpdated: number;
+  planType?: string;
 }
 
 // ── API Response Schemas ───────────────────────────────────────────

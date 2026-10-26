@@ -5,6 +5,8 @@ import {
   formatBadge,
   formatProgressBar,
   formatWindowData,
+  calculatePacing,
+  formatPlanType,
 } from "./format.js";
 import type { QuotaTelemetry } from "../domain/models.js";
 
@@ -131,6 +133,11 @@ describe("TUI formatting helpers", () => {
         credits: 0,
         prefixText: "Codex",
         metaText: " · No Auth",
+        plan: "Codex",
+        pacing: {
+          text: "No Auth",
+          color: "gray",
+        },
       });
     });
 
@@ -142,6 +149,11 @@ describe("TUI formatting helpers", () => {
         credits: 0,
         prefixText: "Codex",
         metaText: " · Off",
+        plan: "Codex",
+        pacing: {
+          text: "Off",
+          color: "gray",
+        },
       });
     });
 
@@ -153,6 +165,11 @@ describe("TUI formatting helpers", () => {
         credits: 0,
         prefixText: "Codex",
         metaText: " · Expired",
+        plan: "Codex",
+        pacing: {
+          text: "Expired",
+          color: "red",
+        },
       });
     });
 
@@ -164,6 +181,11 @@ describe("TUI formatting helpers", () => {
         credits: 0,
         prefixText: "Codex",
         metaText: " · Invalid",
+        plan: "Codex",
+        pacing: {
+          text: "Invalid",
+          color: "red",
+        },
       });
     });
 
@@ -175,6 +197,11 @@ describe("TUI formatting helpers", () => {
         credits: 0,
         prefixText: "Codex",
         metaText: " · ...",
+        plan: "Codex",
+        pacing: {
+          text: "...",
+          color: "gray",
+        },
       });
     });
 
@@ -258,6 +285,52 @@ describe("TUI formatting helpers", () => {
       const badge = formatBadge(telemetry, "valid", NOW);
       expect(badge.color).toBe("red");
       expect(badge.primary?.color).toBe("red");
+    });
+  });
+
+  describe("formatPlanType", () => {
+    it("should format known plans correctly", () => {
+      expect(formatPlanType("plus")).toBe("Plus");
+      expect(formatPlanType("pro")).toBe("Pro");
+      expect(formatPlanType("team")).toBe("Team");
+      expect(formatPlanType("enterprise")).toBe("Enterprise");
+    });
+
+    it("should default to Plus when plan is unknown or missing", () => {
+      expect(formatPlanType(undefined)).toBe("Plus");
+      expect(formatPlanType("")).toBe("Plus");
+      expect(formatPlanType("custom_plan")).toBe("Custom_plan");
+    });
+  });
+
+  describe("calculatePacing", () => {
+    const WINDOW_5H = 5 * 3600 * 1000;
+    const NOW = 1_700_000_000_000;
+
+    it("should report Al ritmo previsto when usage is 0%", () => {
+      const pacing = calculatePacing(0, NOW + 2 * 3600 * 1000, WINDOW_5H, NOW);
+      expect(pacing.text).toBe("Al ritmo previsto");
+      expect(pacing.color).toBe("green");
+    });
+
+    it("should report En riesgo de límite when usage is >= 85%", () => {
+      const pacing = calculatePacing(88, NOW + 4 * 3600 * 1000, WINDOW_5H, NOW);
+      expect(pacing.text).toBe("En riesgo de límite");
+      expect(pacing.color).toBe("red");
+    });
+
+    it("should report Consumo acelerado when consumption pace significantly exceeds elapsed time", () => {
+      // 60% used after only 1 hour elapsed (4 hours remaining out of 5) => elapsed is 20%, pace is 60/20 = 3
+      const pacing = calculatePacing(60, NOW + 4 * 3600 * 1000, WINDOW_5H, NOW);
+      expect(pacing.text).toBe("Consumo acelerado");
+      expect(pacing.color).toBe("yellow");
+    });
+
+    it("should report Al ritmo previsto when usage is normal", () => {
+      // 30% used after 2 hours elapsed (3 hours remaining) => elapsed is 40%
+      const pacing = calculatePacing(30, NOW + 3 * 3600 * 1000, WINDOW_5H, NOW);
+      expect(pacing.text).toBe("Al ritmo previsto");
+      expect(pacing.color).toBe("green");
     });
   });
 });

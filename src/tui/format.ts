@@ -19,10 +19,17 @@ export interface ProgressBarResult {
   full: string;
 }
 
+export interface PacingStatus {
+  text: string;
+  color: QuotaColor;
+}
+
 export interface QuotaBadge {
   text: string;
   color: QuotaColor;
   credits: number;
+  plan: string;
+  pacing: PacingStatus;
   primary?: WindowBadgeData;
   weekly?: WindowBadgeData;
   barText?: string;
@@ -30,6 +37,42 @@ export interface QuotaBadge {
   emptyBar?: string;
   prefixText?: string;
   metaText?: string;
+}
+
+export function formatPlanType(rawPlan?: string): string {
+  if (!rawPlan) return "Plus";
+  const normalized = rawPlan.toLowerCase().trim();
+  if (normalized === "plus") return "Plus";
+  if (normalized === "pro") return "Pro";
+  if (normalized === "team") return "Team";
+  if (normalized === "enterprise") return "Enterprise";
+  return rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1);
+}
+
+export function calculatePacing(
+  usedPercent: number,
+  resetsAt: number,
+  windowDurationMs: number = 5 * 3600 * 1000,
+  nowMs: number = Date.now(),
+): PacingStatus {
+  if (usedPercent <= 0) {
+    return { text: "Al ritmo previsto", color: "green" };
+  }
+
+  if (usedPercent >= 85) {
+    return { text: "En riesgo de límite", color: "red" };
+  }
+
+  const remainingMs = Math.max(0, resetsAt - nowMs);
+  const elapsedMs = Math.max(0, windowDurationMs - remainingMs);
+  const elapsedPercent = Math.max(1, (elapsedMs / windowDurationMs) * 100);
+  const paceRatio = usedPercent / elapsedPercent;
+
+  if (paceRatio > 1.5 && usedPercent > 50) {
+    return { text: "Consumo acelerado", color: "yellow" };
+  }
+
+  return { text: "Al ritmo previsto", color: "green" };
 }
 
 export function formatProgressBar(
@@ -112,12 +155,20 @@ export function formatBadge(
   authStatus: AuthStatus,
   nowMs: number = Date.now(),
 ): QuotaBadge {
+  const plan = formatPlanType(telemetry?.planType);
+  const defaultPacing: PacingStatus = {
+    text: "Al ritmo previsto",
+    color: "green",
+  };
+
   switch (authStatus) {
     case "missing-file":
       return {
         text: "Codex · No Auth",
         color: "gray",
         credits: 0,
+        plan: "Codex",
+        pacing: { text: "No Auth", color: "gray" },
         prefixText: "Codex",
         metaText: " · No Auth",
       };
@@ -126,6 +177,8 @@ export function formatBadge(
         text: "Codex · Off",
         color: "gray",
         credits: 0,
+        plan: "Codex",
+        pacing: { text: "Off", color: "gray" },
         prefixText: "Codex",
         metaText: " · Off",
       };
@@ -134,6 +187,8 @@ export function formatBadge(
         text: "Codex · Expired",
         color: "red",
         credits: 0,
+        plan: "Codex",
+        pacing: { text: "Expired", color: "red" },
         prefixText: "Codex",
         metaText: " · Expired",
       };
@@ -142,6 +197,8 @@ export function formatBadge(
         text: "Codex · Invalid",
         color: "red",
         credits: 0,
+        plan: "Codex",
+        pacing: { text: "Invalid", color: "red" },
         prefixText: "Codex",
         metaText: " · Invalid",
       };
@@ -155,6 +212,8 @@ export function formatBadge(
       text: "Codex · ...",
       color: "gray",
       credits: 0,
+      plan: "Codex",
+      pacing: { text: "...", color: "gray" },
       prefixText: "Codex",
       metaText: " · ...",
     };
@@ -168,6 +227,15 @@ export function formatBadge(
   const mainUsed = primary?.usedPercent ?? 0;
   const mainTime = primary?.timeRemaining ?? "0m";
 
+  const pacing = telemetry.primaryWindow
+    ? calculatePacing(
+        telemetry.primaryWindow.usedPercent,
+        telemetry.primaryWindow.resetsAt,
+        5 * 3600 * 1000,
+        nowMs,
+      )
+    : defaultPacing;
+
   const pText = primary
     ? `5h ${primary.usedPercent}% · ⏳ ${mainTime}`
     : `Codex · Active`;
@@ -180,6 +248,8 @@ export function formatBadge(
     text: fullText,
     color: mainColor,
     credits,
+    plan,
+    pacing,
     primary,
     weekly,
     barText: primary?.filledBar

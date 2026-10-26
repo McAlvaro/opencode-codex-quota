@@ -41,6 +41,11 @@ export function getOrCreateSharedBadgeSignal() {
       credits: 0,
       prefixText: "Codex",
       metaText: " · ...",
+      plan: "Codex",
+      pacing: {
+        text: "...",
+        color: "gray",
+      },
     });
     sharedBadge = b;
     setSharedBadge = setB;
@@ -93,6 +98,11 @@ export async function updateQuotaBadge(
       emptyBar: "",
       prefixText: "Codex",
       metaText: " · Err",
+      plan: "Codex",
+      pacing: {
+        text: "Err",
+        color: "red",
+      },
     });
   }
 }
@@ -147,6 +157,45 @@ export function CodexQuotaWidget(props: CodexQuotaWidgetProps) {
   });
 
   const displayBadge = props.badge ?? badge;
+
+  // ── ROW 0: Plan & Pacing (e.g. Plus · Al ritmo previsto) ──
+  const row0PlanProps = Object.create(null);
+  Object.defineProperty(row0PlanProps, "fg", {
+    get() {
+      return isVisible() ? (displayBadge().color ?? "green") : "gray";
+    },
+    enumerable: true,
+  });
+  row0PlanProps.children = () => {
+    if (!isVisible()) return "";
+    return displayBadge().plan ?? "Codex";
+  };
+
+  const row0PacingProps = Object.create(null);
+  Object.defineProperty(row0PacingProps, "fg", {
+    get() {
+      return isVisible() ? (displayBadge().pacing?.color ?? "green") : "gray";
+    },
+    enumerable: true,
+  });
+  row0PacingProps.children = () => {
+    if (!isVisible()) return "";
+    const p = displayBadge().pacing;
+    return p?.text ? ` · ${p.text}` : "";
+  };
+
+  const row0Props = Object.create(null);
+  row0Props.flexDirection = "row";
+  Object.defineProperty(row0Props, "visible", {
+    get() {
+      return isVisible() && Boolean(displayBadge().primary);
+    },
+    enumerable: true,
+  });
+  row0Props.children = [
+    _jsx("text", row0PlanProps),
+    _jsx("text", row0PacingProps),
+  ];
 
   // ── ROW 1: 5h Window (or single status line fallback) ──
   const row1LabelProps = Object.create(null);
@@ -285,7 +334,11 @@ export function CodexQuotaWidget(props: CodexQuotaWidgetProps) {
     },
     enumerable: true,
   });
-  boxProps.children = [_jsx("box", row1Props), _jsx("box", row2Props)];
+  boxProps.children = [
+    _jsx("box", row0Props),
+    _jsx("box", row1Props),
+    _jsx("box", row2Props),
+  ];
 
   return _jsx("box", boxProps);
 }

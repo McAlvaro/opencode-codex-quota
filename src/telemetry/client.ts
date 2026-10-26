@@ -96,6 +96,7 @@ export class CodexTelemetryClient {
           : null,
         availableResetCredits: availableCredits,
         lastUpdated: now,
+        planType: usageParsed.data.plan_type,
       };
 
       this.cache = { data: telemetry, timestamp: now };
