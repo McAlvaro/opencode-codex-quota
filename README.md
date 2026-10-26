@@ -18,3 +18,27 @@ When using OpenCode with ChatGPT / OpenAI Codex subscription credentials, agenti
 - [Architecture & Design](docs/ARCHITECTURE.md)
 - [Technical Specification & API Contracts](docs/SPECIFICATION.md)
 - [Implementation Roadmap & Tasks](docs/PLANNING.md)
+
+## Installation & Setup
+
+### 1. Build the plugin
+```bash
+npm install
+npm run build
+```
+
+### 2. Register in OpenCode TUI Configuration
+Add the compiled module path to your local or global `tui.jsonc` (e.g. `~/.config/opencode/tui.jsonc`):
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/tui.json",
+  "plugins": [
+    "file:///home/alvaro/Documents/Courses/personal-projects/opencode-codex-quota/dist/index.js"
+  ]
+}
+```
+
+### 3. Usage
+- **Ambient Indicator**: Appears automatically in the sidebar footer and session prompt right displaying `[Codex: 42% | ⏳ 2h 15m | ⚡ 1]`.
+- **Slash Command**: Type `/codex-usage` (or `/quota`) in any prompt to inspect metrics or redeem banked rate-limit resets.
