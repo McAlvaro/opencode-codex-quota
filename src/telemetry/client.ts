@@ -49,30 +49,52 @@ export class CodexTelemetryClient {
         }),
       ]);
 
-      if (!usageRes.ok || !creditsRes.ok) {
+      if (!usageRes.ok) {
         return this.fallbackOrNull();
       }
 
-      const [usageJson, creditsJson] = await Promise.all([
-        usageRes.json(),
-        creditsRes.json(),
-      ]);
-
+      const usageJson = await usageRes.json();
       const usageParsed = UsageResponseSchema.safeParse(usageJson);
-      const creditsParsed = ResetCreditsResponseSchema.safeParse(creditsJson);
 
-      if (!usageParsed.success || !creditsParsed.success) {
+      if (!usageParsed.success) {
         return this.fallbackOrNull();
       }
 
-      const { primary_window, weekly_window } = usageParsed.data.rate_limit;
+      let availableCredits = 0;
+      if (creditsRes.ok) {
+        try {
+          const creditsJson = await creditsRes.json();
+          const creditsParsed =
+            ResetCreditsResponseSchema.safeParse(creditsJson);
+          if (creditsParsed.success) {
+            availableCredits = creditsParsed.data.available_count;
+          }
+        } catch {
+          // Fall back to usageParsed credits
+        }
+      }
+
+      if (
+        availableCredits === 0 &&
+        typeof usageParsed.data.rate_limit_reset_credits?.available_count ===
+          "number"
+      ) {
+        availableCredits =
+          usageParsed.data.rate_limit_reset_credits.available_count;
+      }
+
+      const { primary_window, secondary_window, weekly_window } =
+        usageParsed.data.rate_limit;
+      const weekly = secondary_window ?? weekly_window;
 
       const telemetry: QuotaTelemetry = {
         primaryWindow: primary_window
-          ? mapWindowToQuota(primary_window)
+          ? mapWindowToQuota(primary_window, "5h Rolling Window", now)
           : null,
-        weeklyWindow: weekly_window ? mapWindowToQuota(weekly_window) : null,
-        availableResetCredits: creditsParsed.data.available_count,
+        weeklyWindow: weekly
+          ? mapWindowToQuota(weekly, "Weekly Limit", now)
+          : null,
+        availableResetCredits: availableCredits,
         lastUpdated: now,
       };
 

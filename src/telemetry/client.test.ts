@@ -124,6 +124,56 @@ describe("CodexTelemetryClient", () => {
         Accept: "application/json",
       });
     });
+
+    it("should parse real ChatGPT backend payload format (used_percent, secondary_window, seconds resets_at)", async () => {
+      const realUsagePayload = {
+        plan_type: "plus",
+        rate_limit: {
+          allowed: true,
+          limit_reached: false,
+          primary_window: {
+            used_percent: 15.5,
+            limit_window_seconds: 18000,
+            reset_after_seconds: 12000,
+            reset_at: 1793003274,
+          },
+          secondary_window: {
+            used_percent: 5.0,
+            limit_window_seconds: 604800,
+            reset_after_seconds: 500000,
+            reset_at: 1793590074,
+          },
+        },
+        rate_limit_reset_credits: {
+          available_count: 2,
+        },
+      };
+
+      const realCreditsPayload = {
+        credits: [],
+        available_count: 0,
+      };
+
+      const fetchFn = mockFetch(200, 200, realUsagePayload, realCreditsPayload);
+      client = new CodexTelemetryClient(makeDeps({ fetchFn }));
+      const telemetry = await client.getTelemetry(VALID_CREDS);
+
+      expect(telemetry).not.toBeNull();
+      expect(telemetry?.primaryWindow).toEqual({
+        name: "5h Rolling Window",
+        usedPercent: 15.5,
+        remainingPercent: 84.5,
+        resetsAt: 1793003274 * 1000,
+      });
+      expect(telemetry?.weeklyWindow).toEqual({
+        name: "Weekly Limit",
+        usedPercent: 5.0,
+        remainingPercent: 95.0,
+        resetsAt: 1793590074 * 1000,
+      });
+      // Fallback to rate_limit_reset_credits from usage when credits endpoint reports 0
+      expect(telemetry?.availableResetCredits).toBe(2);
+    });
   });
 
   describe("TTL cache", () => {
