@@ -4,6 +4,7 @@ import {
   getQuotaSeverity,
   formatBadge,
   formatProgressBar,
+  formatWindowData,
 } from "./format.js";
 import type { QuotaTelemetry } from "../domain/models.js";
 
@@ -55,40 +56,67 @@ describe("TUI formatting helpers", () => {
 
   describe("formatProgressBar", () => {
     it("should format empty bar for 0% usage", () => {
-      const res = formatProgressBar(0, 24);
+      const res = formatProgressBar(0, 10);
       expect(res.filled).toBe("");
-      expect(res.empty).toBe("─".repeat(24));
-      expect(res.full).toBe("─".repeat(24));
+      expect(res.empty).toBe("─".repeat(10));
+      expect(res.full).toBe("─".repeat(10));
     });
 
     it("should format full bar for 100% usage", () => {
-      const res = formatProgressBar(100, 24);
-      expect(res.filled).toBe("━".repeat(24));
+      const res = formatProgressBar(100, 10);
+      expect(res.filled).toBe("━".repeat(10));
       expect(res.empty).toBe("");
-      expect(res.full).toBe("━".repeat(24));
+      expect(res.full).toBe("━".repeat(10));
     });
 
     it("should format proportional blocks for partial usage (50%)", () => {
-      const res = formatProgressBar(50, 24);
-      expect(res.filled).toBe("━".repeat(12));
-      expect(res.empty).toBe("─".repeat(12));
-      expect(res.full).toBe("━".repeat(12) + "─".repeat(12));
+      const res = formatProgressBar(50, 10);
+      expect(res.filled).toBe("━".repeat(5));
+      expect(res.empty).toBe("─".repeat(5));
+      expect(res.full).toBe("━".repeat(5) + "─".repeat(5));
     });
 
     it("should clamp values below 0 and above 100", () => {
-      const below = formatProgressBar(-10, 24);
+      const below = formatProgressBar(-10, 10);
       expect(below.filled).toBe("");
-      expect(below.empty).toBe("─".repeat(24));
+      expect(below.empty).toBe("─".repeat(10));
 
-      const above = formatProgressBar(150, 24);
-      expect(above.filled).toBe("━".repeat(24));
+      const above = formatProgressBar(150, 10);
+      expect(above.filled).toBe("━".repeat(10));
       expect(above.empty).toBe("");
     });
 
     it("should handle non-finite numbers safely", () => {
-      const nanRes = formatProgressBar(NaN, 24);
+      const nanRes = formatProgressBar(NaN, 10);
       expect(nanRes.filled).toBe("");
-      expect(nanRes.empty).toBe("─".repeat(24));
+      expect(nanRes.empty).toBe("─".repeat(10));
+    });
+  });
+
+  describe("formatWindowData", () => {
+    it("should return undefined when window is null", () => {
+      expect(formatWindowData(null, "5h", 1000)).toBeUndefined();
+    });
+
+    it("should format window data correctly", () => {
+      const res = formatWindowData(
+        {
+          name: "5h Rolling",
+          usedPercent: 42.4,
+          remainingPercent: 57.6,
+          resetsAt: 1000 + 3600 * 1000,
+        },
+        "5h",
+        1000,
+        10,
+      );
+      expect(res).toBeDefined();
+      expect(res?.label).toBe("5h");
+      expect(res?.usedPercent).toBe(42);
+      expect(res?.color).toBe("green");
+      expect(res?.timeRemaining).toBe("1h 0m");
+      expect(res?.filledBar).toBe("━".repeat(4));
+      expect(res?.emptyBar).toBe("─".repeat(6));
     });
   });
 
@@ -100,9 +128,7 @@ describe("TUI formatting helpers", () => {
       expect(badge).toEqual({
         text: "Codex · No Auth",
         color: "gray",
-        barText: "",
-        filledBar: "",
-        emptyBar: "",
+        credits: 0,
         prefixText: "Codex",
         metaText: " · No Auth",
       });
@@ -113,9 +139,7 @@ describe("TUI formatting helpers", () => {
       expect(badge).toEqual({
         text: "Codex · Off",
         color: "gray",
-        barText: "",
-        filledBar: "",
-        emptyBar: "",
+        credits: 0,
         prefixText: "Codex",
         metaText: " · Off",
       });
@@ -126,9 +150,7 @@ describe("TUI formatting helpers", () => {
       expect(badge).toEqual({
         text: "Codex · Expired",
         color: "red",
-        barText: "",
-        filledBar: "",
-        emptyBar: "",
+        credits: 0,
         prefixText: "Codex",
         metaText: " · Expired",
       });
@@ -139,9 +161,7 @@ describe("TUI formatting helpers", () => {
       expect(badge).toEqual({
         text: "Codex · Invalid",
         color: "red",
-        barText: "",
-        filledBar: "",
-        emptyBar: "",
+        credits: 0,
         prefixText: "Codex",
         metaText: " · Invalid",
       });
@@ -152,9 +172,7 @@ describe("TUI formatting helpers", () => {
       expect(badge).toEqual({
         text: "Codex · ...",
         color: "gray",
-        barText: "",
-        filledBar: "",
-        emptyBar: "",
+        credits: 0,
         prefixText: "Codex",
         metaText: " · ...",
       });
@@ -169,19 +187,12 @@ describe("TUI formatting helpers", () => {
       };
 
       const badge = formatBadge(telemetry, "valid", NOW);
-      const bar = formatProgressBar(0, 24);
-      expect(badge).toEqual({
-        text: "Codex · Active · ⚡ 3",
-        color: "green",
-        barText: bar.full,
-        filledBar: bar.filled,
-        emptyBar: bar.empty,
-        prefixText: "Codex",
-        metaText: " · Active · ⚡ 3",
-      });
+      expect(badge.text).toBe("Codex · Active · ⚡ 3");
+      expect(badge.color).toBe("green");
+      expect(badge.credits).toBe(3);
     });
 
-    it("should format active quota with primary window and available credits", () => {
+    it("should format active quota with primary and weekly windows", () => {
       const telemetry: QuotaTelemetry = {
         primaryWindow: {
           name: "5-hour",
@@ -189,25 +200,31 @@ describe("TUI formatting helpers", () => {
           remainingPercent: 57.6,
           resetsAt: NOW + (2 * 3600 + 15 * 60) * 1000,
         },
-        weeklyWindow: null,
+        weeklyWindow: {
+          name: "Weekly",
+          usedPercent: 12.0,
+          remainingPercent: 88.0,
+          resetsAt: NOW + (6 * 24 * 3600 + 21 * 3600) * 1000,
+        },
         availableResetCredits: 1,
         lastUpdated: NOW,
       };
 
       const badge = formatBadge(telemetry, "valid", NOW);
-      const bar = formatProgressBar(42.4, 24);
-      expect(badge).toEqual({
-        text: "Codex 42% · ⏳ 2h 15m · ⚡ 1",
-        color: "green",
-        barText: bar.full,
-        filledBar: bar.filled,
-        emptyBar: bar.empty,
-        prefixText: "Codex 42%",
-        metaText: " · ⏳ 2h 15m · ⚡ 1",
-      });
+      expect(badge.color).toBe("green");
+      expect(badge.credits).toBe(1);
+      expect(badge.primary).toBeDefined();
+      expect(badge.primary?.label).toBe("5h");
+      expect(badge.primary?.usedPercent).toBe(42);
+      expect(badge.primary?.timeRemaining).toBe("2h 15m");
+
+      expect(badge.weekly).toBeDefined();
+      expect(badge.weekly?.label).toBe("7d");
+      expect(badge.weekly?.usedPercent).toBe(12);
+      expect(badge.weekly?.timeRemaining).toBe("6d 21h");
     });
 
-    it("should apply yellow color when quota is in warning range (e.g. 75%)", () => {
+    it("should apply yellow color when primary quota is in warning range (75%)", () => {
       const telemetry: QuotaTelemetry = {
         primaryWindow: {
           name: "5-hour",
@@ -221,19 +238,11 @@ describe("TUI formatting helpers", () => {
       };
 
       const badge = formatBadge(telemetry, "valid", NOW);
-      const bar = formatProgressBar(75, 24);
-      expect(badge).toEqual({
-        text: "Codex 75% · ⏳ 30m · ⚡ 0",
-        color: "yellow",
-        barText: bar.full,
-        filledBar: bar.filled,
-        emptyBar: bar.empty,
-        prefixText: "Codex 75%",
-        metaText: " · ⏳ 30m · ⚡ 0",
-      });
+      expect(badge.color).toBe("yellow");
+      expect(badge.primary?.color).toBe("yellow");
     });
 
-    it("should apply red color when quota is in critical range (e.g. 90%)", () => {
+    it("should apply red color when primary quota is in critical range (90%)", () => {
       const telemetry: QuotaTelemetry = {
         primaryWindow: {
           name: "5-hour",
@@ -247,16 +256,8 @@ describe("TUI formatting helpers", () => {
       };
 
       const badge = formatBadge(telemetry, "valid", NOW);
-      const bar = formatProgressBar(90, 24);
-      expect(badge).toEqual({
-        text: "Codex 90% · ⏳ 10m · ⚡ 2",
-        color: "red",
-        barText: bar.full,
-        filledBar: bar.filled,
-        emptyBar: bar.empty,
-        prefixText: "Codex 90%",
-        metaText: " · ⏳ 10m · ⚡ 2",
-      });
+      expect(badge.color).toBe("red");
+      expect(badge.primary?.color).toBe("red");
     });
   });
 });

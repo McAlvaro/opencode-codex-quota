@@ -1,15 +1,16 @@
-import type { AuthStatus, QuotaTelemetry } from "../domain/models.js";
+import type { AuthStatus, QuotaTelemetry, QuotaWindow } from "../domain/models.js";
 
 export type QuotaColor = "green" | "yellow" | "red" | "gray";
 
-export interface QuotaBadge {
-  text: string;
+export interface WindowBadgeData {
+  label: string;
+  usedPercent: number;
   color: QuotaColor;
-  barText: string;
+  timeRemaining: string;
   filledBar: string;
   emptyBar: string;
-  prefixText: string;
-  metaText: string;
+  pctText: string;
+  timeText: string;
 }
 
 export interface ProgressBarResult {
@@ -18,9 +19,22 @@ export interface ProgressBarResult {
   full: string;
 }
 
+export interface QuotaBadge {
+  text: string;
+  color: QuotaColor;
+  credits: number;
+  primary?: WindowBadgeData;
+  weekly?: WindowBadgeData;
+  barText?: string;
+  filledBar?: string;
+  emptyBar?: string;
+  prefixText?: string;
+  metaText?: string;
+}
+
 export function formatProgressBar(
   usedPercent: number = 0,
-  width: number = 24,
+  width: number = 10,
 ): ProgressBarResult {
   const safePercent = Number.isFinite(usedPercent) ? usedPercent : 0;
   const clamped = Math.max(0, Math.min(100, safePercent));
@@ -32,6 +46,31 @@ export function formatProgressBar(
     filled,
     empty,
     full: `${filled}${empty}`,
+  };
+}
+
+export function formatWindowData(
+  window: QuotaWindow | null,
+  defaultLabel: string,
+  nowMs: number,
+  gaugeWidth = 10,
+): WindowBadgeData | undefined {
+  if (!window) return undefined;
+
+  const usedRounded = Math.round(window.usedPercent);
+  const color = getQuotaSeverity(usedRounded);
+  const bar = formatProgressBar(window.usedPercent, gaugeWidth);
+  const timeStr = formatTimeRemaining(window.resetsAt, nowMs);
+
+  return {
+    label: defaultLabel,
+    usedPercent: usedRounded,
+    color,
+    timeRemaining: timeStr,
+    filledBar: bar.filled,
+    emptyBar: bar.empty,
+    pctText: `${String(usedRounded).padStart(3, " ")}%`,
+    timeText: timeStr.padStart(6, " "),
   };
 }
 
@@ -78,9 +117,7 @@ export function formatBadge(
       return {
         text: "Codex · No Auth",
         color: "gray",
-        barText: "",
-        filledBar: "",
-        emptyBar: "",
+        credits: 0,
         prefixText: "Codex",
         metaText: " · No Auth",
       };
@@ -88,9 +125,7 @@ export function formatBadge(
       return {
         text: "Codex · Off",
         color: "gray",
-        barText: "",
-        filledBar: "",
-        emptyBar: "",
+        credits: 0,
         prefixText: "Codex",
         metaText: " · Off",
       };
@@ -98,9 +133,7 @@ export function formatBadge(
       return {
         text: "Codex · Expired",
         color: "red",
-        barText: "",
-        filledBar: "",
-        emptyBar: "",
+        credits: 0,
         prefixText: "Codex",
         metaText: " · Expired",
       };
@@ -108,9 +141,7 @@ export function formatBadge(
       return {
         text: "Codex · Invalid",
         color: "red",
-        barText: "",
-        filledBar: "",
-        emptyBar: "",
+        credits: 0,
         prefixText: "Codex",
         metaText: " · Invalid",
       };
@@ -123,42 +154,40 @@ export function formatBadge(
     return {
       text: "Codex · ...",
       color: "gray",
-      barText: "",
-      filledBar: "",
-      emptyBar: "",
+      credits: 0,
       prefixText: "Codex",
       metaText: " · ...",
     };
   }
 
-  const primary = telemetry.primaryWindow;
-  if (!primary) {
-    const credits = telemetry.availableResetCredits;
-    const bar = formatProgressBar(0, 24);
-    return {
-      text: `Codex · Active · ⚡ ${credits}`,
-      color: "green",
-      barText: bar.full,
-      filledBar: bar.filled,
-      emptyBar: bar.empty,
-      prefixText: "Codex",
-      metaText: ` · Active · ⚡ ${credits}`,
-    };
-  }
-
-  const usedRounded = Math.round(primary.usedPercent);
-  const timeStr = formatTimeRemaining(primary.resetsAt, nowMs);
   const credits = telemetry.availableResetCredits;
-  const color = getQuotaSeverity(usedRounded);
-  const bar = formatProgressBar(primary.usedPercent, 24);
+  const primary = formatWindowData(telemetry.primaryWindow, "5h", nowMs, 10);
+  const weekly = formatWindowData(telemetry.weeklyWindow, "7d", nowMs, 10);
+
+  const mainColor = primary?.color ?? "green";
+  const mainUsed = primary?.usedPercent ?? 0;
+  const mainTime = primary?.timeRemaining ?? "0m";
+
+  const pText = primary
+    ? `5h ${primary.usedPercent}% · ⏳ ${mainTime}`
+    : `Codex · Active`;
+  const wText = weekly
+    ? ` | 7d ${weekly.usedPercent}% · ⏳ ${weekly.timeRemaining}`
+    : "";
+  const fullText = `${pText}${wText} · ⚡ ${credits}`;
 
   return {
-    text: `Codex ${usedRounded}% · ⏳ ${timeStr} · ⚡ ${credits}`,
-    color,
-    barText: bar.full,
-    filledBar: bar.filled,
-    emptyBar: bar.empty,
-    prefixText: `Codex ${usedRounded}%`,
-    metaText: ` · ⏳ ${timeStr} · ⚡ ${credits}`,
+    text: fullText,
+    color: mainColor,
+    credits,
+    primary,
+    weekly,
+    barText: primary?.filledBar
+      ? `${primary.filledBar}${primary.emptyBar}`
+      : "",
+    filledBar: primary?.filledBar,
+    emptyBar: primary?.emptyBar,
+    prefixText: `Codex ${mainUsed}%`,
+    metaText: ` · ⏳ ${mainTime} · ⚡ ${credits}`,
   };
 }

@@ -38,9 +38,7 @@ export function getOrCreateSharedBadgeSignal() {
     const [b, setB] = createSignal<QuotaBadge>({
       text: "Codex · ...",
       color: "gray",
-      barText: "",
-      filledBar: "",
-      emptyBar: "",
+      credits: 0,
       prefixText: "Codex",
       metaText: " · ...",
     });
@@ -89,6 +87,7 @@ export async function updateQuotaBadge(
     setBadge({
       text: "Codex · Err",
       color: "red",
+      credits: 0,
       barText: "",
       filledBar: "",
       emptyBar: "",
@@ -149,56 +148,133 @@ export function CodexQuotaWidget(props: CodexQuotaWidgetProps) {
 
   const displayBadge = props.badge ?? badge;
 
-  // Row 1: Gauge (Filled bar in accent color, Empty track in subtle gray)
-  const barFilledProps = Object.create(null);
-  Object.defineProperty(barFilledProps, "fg", {
+  // ── ROW 1: 5h Window (or single status line fallback) ──
+  const row1LabelProps = Object.create(null);
+  Object.defineProperty(row1LabelProps, "fg", {
     get() {
-      return isVisible() ? displayBadge().color : "gray";
+      return isVisible()
+        ? (displayBadge().primary?.color ?? displayBadge().color)
+        : "gray";
     },
     enumerable: true,
   });
-  barFilledProps.children = () =>
-    isVisible() ? (displayBadge().filledBar ?? "") : "";
+  row1LabelProps.children = () => {
+    if (!isVisible()) return "";
+    const p = displayBadge().primary;
+    if (p) return `${p.label} ${p.filledBar}`;
+    return displayBadge().prefixText ?? displayBadge().text;
+  };
 
-  const barEmptyProps = Object.create(null);
-  barEmptyProps.fg = "gray";
-  barEmptyProps.children = () =>
-    isVisible() ? (displayBadge().emptyBar ?? "") : "";
+  const row1EmptyProps = Object.create(null);
+  row1EmptyProps.fg = "gray";
+  row1EmptyProps.children = () => {
+    if (!isVisible()) return "";
+    return displayBadge().primary?.emptyBar ?? "";
+  };
+
+  const row1PctProps = Object.create(null);
+  Object.defineProperty(row1PctProps, "fg", {
+    get() {
+      return isVisible() ? (displayBadge().primary?.color ?? "green") : "gray";
+    },
+    enumerable: true,
+  });
+  row1PctProps.children = () => {
+    if (!isVisible()) return "";
+    const p = displayBadge().primary;
+    return p ? ` ${p.pctText}` : "";
+  };
+
+  const row1TimeProps = Object.create(null);
+  row1TimeProps.fg = "gray";
+  row1TimeProps.children = () => {
+    if (!isVisible()) return "";
+    const p = displayBadge().primary;
+    if (p) return ` ${p.timeText}`;
+    return displayBadge().metaText ?? "";
+  };
 
   const row1Props = Object.create(null);
   row1Props.flexDirection = "row";
-  Object.defineProperty(row1Props, "visible", {
-    get() {
-      return isVisible() && Boolean(displayBadge().barText);
-    },
-    enumerable: true,
-  });
   row1Props.children = [
-    _jsx("text", barFilledProps),
-    _jsx("text", barEmptyProps),
+    _jsx("text", row1LabelProps),
+    _jsx("text", row1EmptyProps),
+    _jsx("text", row1PctProps),
+    _jsx("text", row1TimeProps),
   ];
 
-  // Row 2: Metrics line (Prefix in accent color, Metadata in subtle gray)
-  const textPrefixProps = Object.create(null);
-  Object.defineProperty(textPrefixProps, "fg", {
+  // ── ROW 2: 7d Window (Weekly quota & credits) ──
+  const row2LabelProps = Object.create(null);
+  Object.defineProperty(row2LabelProps, "fg", {
     get() {
-      return isVisible() ? displayBadge().color : "gray";
+      return isVisible()
+        ? (displayBadge().weekly?.color ?? "green")
+        : "gray";
     },
     enumerable: true,
   });
-  textPrefixProps.children = () =>
-    isVisible() ? (displayBadge().prefixText ?? displayBadge().text) : "";
+  row2LabelProps.children = () => {
+    if (!isVisible()) return "";
+    const w = displayBadge().weekly;
+    return w ? `${w.label} ${w.filledBar}` : "";
+  };
 
-  const textMetaProps = Object.create(null);
-  textMetaProps.fg = "gray";
-  textMetaProps.children = () =>
-    isVisible() ? (displayBadge().metaText ?? "") : "";
+  const row2EmptyProps = Object.create(null);
+  row2EmptyProps.fg = "gray";
+  row2EmptyProps.children = () => {
+    if (!isVisible()) return "";
+    return displayBadge().weekly?.emptyBar ?? "";
+  };
+
+  const row2PctProps = Object.create(null);
+  Object.defineProperty(row2PctProps, "fg", {
+    get() {
+      return isVisible() ? (displayBadge().weekly?.color ?? "green") : "gray";
+    },
+    enumerable: true,
+  });
+  row2PctProps.children = () => {
+    if (!isVisible()) return "";
+    const w = displayBadge().weekly;
+    return w ? ` ${w.pctText}` : "";
+  };
+
+  const row2TimeProps = Object.create(null);
+  row2TimeProps.fg = "gray";
+  row2TimeProps.children = () => {
+    if (!isVisible()) return "";
+    const w = displayBadge().weekly;
+    return w ? ` ${w.timeText} ` : "";
+  };
+
+  const row2CreditsProps = Object.create(null);
+  Object.defineProperty(row2CreditsProps, "fg", {
+    get() {
+      if (!isVisible()) return "gray";
+      return displayBadge().credits > 0 ? "yellow" : "gray";
+    },
+    enumerable: true,
+  });
+  row2CreditsProps.children = () => {
+    if (!isVisible()) return "";
+    const w = displayBadge().weekly;
+    return w ? `⚡${displayBadge().credits}` : "";
+  };
 
   const row2Props = Object.create(null);
   row2Props.flexDirection = "row";
+  Object.defineProperty(row2Props, "visible", {
+    get() {
+      return isVisible() && Boolean(displayBadge().weekly);
+    },
+    enumerable: true,
+  });
   row2Props.children = [
-    _jsx("text", textPrefixProps),
-    _jsx("text", textMetaProps),
+    _jsx("text", row2LabelProps),
+    _jsx("text", row2EmptyProps),
+    _jsx("text", row2PctProps),
+    _jsx("text", row2TimeProps),
+    _jsx("text", row2CreditsProps),
   ];
 
   const boxProps = Object.create(null);
