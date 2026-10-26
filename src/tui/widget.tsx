@@ -38,6 +38,7 @@ export function getOrCreateSharedBadgeSignal() {
     const [b, setB] = createSignal<QuotaBadge>({
       text: "[Codex: ...]",
       color: "gray",
+      barText: "",
     });
     sharedBadge = b;
     setSharedBadge = setB;
@@ -81,7 +82,7 @@ export async function updateQuotaBadge(
     debugLog(
       `update error: ${err instanceof Error ? err.stack : String(err)}`,
     );
-    setBadge({ text: "[Codex: Err]", color: "red" });
+    setBadge({ text: "[Codex: Err]", color: "red", barText: "" });
   }
 }
 
@@ -145,15 +146,24 @@ export function CodexQuotaWidget(props: CodexQuotaWidgetProps) {
   });
   textProps.children = () => (isVisible() ? displayBadge().text : "");
 
+  const barProps = Object.create(null);
+  Object.defineProperty(barProps, "fg", {
+    get() {
+      return isVisible() ? displayBadge().color : "gray";
+    },
+    enumerable: true,
+  });
+  barProps.children = () => (isVisible() ? (displayBadge().barText ?? "") : "");
+
   const boxProps = Object.create(null);
-  boxProps.flexDirection = "row";
+  boxProps.flexDirection = "column";
   Object.defineProperty(boxProps, "visible", {
     get() {
       return isVisible();
     },
     enumerable: true,
   });
-  boxProps.children = _jsx("text", textProps);
+  boxProps.children = [_jsx("text", barProps), _jsx("text", textProps)];
 
   return _jsx("box", boxProps);
 }

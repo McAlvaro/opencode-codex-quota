@@ -3,6 +3,7 @@ import {
   formatTimeRemaining,
   getQuotaSeverity,
   formatBadge,
+  formatProgressBar,
 } from "./format.js";
 import type { QuotaTelemetry } from "../domain/models.js";
 
@@ -52,6 +53,41 @@ describe("TUI formatting helpers", () => {
     });
   });
 
+  describe("formatProgressBar", () => {
+    it("should format empty bar for 0% usage", () => {
+      expect(formatProgressBar(0, 26)).toBe(
+        `[${"░".repeat(26)}]`,
+      );
+    });
+
+    it("should format full bar for 100% usage", () => {
+      expect(formatProgressBar(100, 26)).toBe(
+        `[${"█".repeat(26)}]`,
+      );
+    });
+
+    it("should format proportional blocks for partial usage (50%)", () => {
+      expect(formatProgressBar(50, 26)).toBe(
+        `[${"█".repeat(13)}${"░".repeat(13)}]`,
+      );
+    });
+
+    it("should clamp values below 0 and above 100", () => {
+      expect(formatProgressBar(-10, 26)).toBe(
+        `[${"░".repeat(26)}]`,
+      );
+      expect(formatProgressBar(150, 26)).toBe(
+        `[${"█".repeat(26)}]`,
+      );
+    });
+
+    it("should handle non-finite numbers safely", () => {
+      expect(formatProgressBar(NaN, 26)).toBe(
+        `[${"░".repeat(26)}]`,
+      );
+    });
+  });
+
   describe("formatBadge", () => {
     const NOW = 1_700_000_000_000;
 
@@ -60,6 +96,7 @@ describe("TUI formatting helpers", () => {
       expect(badge).toEqual({
         text: "[Codex: No Auth]",
         color: "gray",
+        barText: "",
       });
     });
 
@@ -68,6 +105,7 @@ describe("TUI formatting helpers", () => {
       expect(badge).toEqual({
         text: "[Codex: Off]",
         color: "gray",
+        barText: "",
       });
     });
 
@@ -76,6 +114,7 @@ describe("TUI formatting helpers", () => {
       expect(badge).toEqual({
         text: "[Codex: Expired]",
         color: "red",
+        barText: "",
       });
     });
 
@@ -84,6 +123,7 @@ describe("TUI formatting helpers", () => {
       expect(badge).toEqual({
         text: "[Codex: Invalid]",
         color: "red",
+        barText: "",
       });
     });
 
@@ -92,6 +132,7 @@ describe("TUI formatting helpers", () => {
       expect(badge).toEqual({
         text: "[Codex: ...]",
         color: "gray",
+        barText: "",
       });
     });
 
@@ -107,6 +148,7 @@ describe("TUI formatting helpers", () => {
       expect(badge).toEqual({
         text: "[Codex: Active | ⚡ 3]",
         color: "green",
+        barText: formatProgressBar(0),
       });
     });
 
@@ -127,6 +169,7 @@ describe("TUI formatting helpers", () => {
       expect(badge).toEqual({
         text: "[Codex: 42% | ⏳ 2h 15m | ⚡ 1]",
         color: "green",
+        barText: formatProgressBar(42.4),
       });
     });
 
@@ -147,6 +190,7 @@ describe("TUI formatting helpers", () => {
       expect(badge).toEqual({
         text: "[Codex: 75% | ⏳ 30m | ⚡ 0]",
         color: "yellow",
+        barText: formatProgressBar(75),
       });
     });
 
@@ -167,6 +211,7 @@ describe("TUI formatting helpers", () => {
       expect(badge).toEqual({
         text: "[Codex: 90% | ⏳ 10m | ⚡ 2]",
         color: "red",
+        barText: formatProgressBar(90),
       });
     });
   });
