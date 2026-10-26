@@ -1,5 +1,6 @@
 /** @jsxImportSource @opentui/solid */
-import { createSignal, onCleanup, onMount, Show, type Accessor } from "solid-js";
+import { jsx as _jsx } from "@opentui/solid/jsx-runtime";
+import { createSignal, onCleanup, onMount, type Accessor } from "solid-js";
 import fs from "node:fs";
 import { formatBadge, type QuotaBadge } from "./format.js";
 import { createIsOpenAISignal, isOpenAIActive } from "./model-filter.js";
@@ -135,11 +136,24 @@ export function CodexQuotaWidget(props: CodexQuotaWidgetProps) {
 
   const displayBadge = props.badge ?? badge;
 
-  return (
-    <box flexDirection="row">
-      <text fg={isVisible() ? displayBadge().color : "gray"}>
-        {isVisible() ? displayBadge().text : ""}
-      </text>
-    </box>
-  );
+  const textProps = Object.create(null);
+  Object.defineProperty(textProps, "fg", {
+    get() {
+      return isVisible() ? displayBadge().color : "gray";
+    },
+    enumerable: true,
+  });
+  textProps.children = () => (isVisible() ? displayBadge().text : "");
+
+  const boxProps = Object.create(null);
+  boxProps.flexDirection = "row";
+  Object.defineProperty(boxProps, "visible", {
+    get() {
+      return isVisible();
+    },
+    enumerable: true,
+  });
+  boxProps.children = _jsx("text", textProps);
+
+  return _jsx("box", boxProps);
 }

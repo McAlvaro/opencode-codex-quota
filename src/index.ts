@@ -85,7 +85,9 @@ export const tui: TuiPlugin = async (api) => {
     const telemetryClient = new CodexTelemetryClient();
     const resetController = new ResetController(telemetryClient);
 
-    const cleanupWatcher = initModelWatcher(api);
+    const cleanupWatcher = initModelWatcher(api, () => {
+      void updateQuotaBadge(authProvider, telemetryClient);
+    });
 
     api.lifecycle?.onDispose?.(() => {
       debugLog("api.lifecycle.onDispose fired");

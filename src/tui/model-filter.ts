@@ -154,7 +154,10 @@ export function createIsOpenAISignal(
   });
 }
 
-export function initModelWatcher(api: TuiPluginApi): () => void {
+export function initModelWatcher(
+  api: TuiPluginApi,
+  onOpenAIActivated?: () => void,
+): () => void {
   const { setModel } = getOrCreateActiveModelSignal(api);
 
   let lastSignature = "";
@@ -163,9 +166,19 @@ export function initModelWatcher(api: TuiPluginApi): () => void {
     const current = resolveActiveModel(api);
     const sig = JSON.stringify(current);
     if (sig !== lastSignature) {
+      const wasOpenAI = lastSignature
+        ? isModelOpenAI(JSON.parse(lastSignature))
+        : false;
+      const isNowOpenAI = isModelOpenAI(current);
+
       lastSignature = sig;
-      debugLog(`Model changed: ${sig}, isOpenAI: ${isModelOpenAI(current)}`);
+      debugLog(`Model changed: ${sig}, isOpenAI: ${isNowOpenAI}`);
       setModel(current);
+
+      if (!wasOpenAI && isNowOpenAI) {
+        debugLog("OpenAI model activated, triggering immediate quota refresh");
+        onOpenAIActivated?.();
+      }
     }
   };
 
