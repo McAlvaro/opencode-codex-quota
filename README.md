@@ -15,6 +15,6 @@ When using OpenCode with ChatGPT / OpenAI Codex subscription credentials, agenti
 
 ## Documentation
 
-- [Architecture & Design](file:///home/alvaro/Documents/Courses/personal-projects/opencode-codex-quota/docs/ARCHITECTURE.md)
-- [Technical Specification & API Contracts](file:///home/alvaro/Documents/Courses/personal-projects/opencode-codex-quota/docs/SPECIFICATION.md)
-- [Implementation Roadmap & Tasks](file:///home/alvaro/Documents/Courses/personal-projects/opencode-codex-quota/docs/PLANNING.md)
+- [Architecture & Design](docs/ARCHITECTURE.md)
+- [Technical Specification & API Contracts](docs/SPECIFICATION.md)
+- [Implementation Roadmap & Tasks](docs/PLANNING.md)
