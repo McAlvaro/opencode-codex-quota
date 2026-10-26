@@ -85,6 +85,14 @@ export const ResetCreditsResponseSchema = z.object({
 export type UsageResponse = z.infer<typeof UsageResponseSchema>;
 export type ResetCreditsResponse = z.infer<typeof ResetCreditsResponseSchema>;
 
+// ── Reset Models ───────────────────────────────────────────────────
+
+export interface ResetConsumptionResult {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
 // ── Mappers ────────────────────────────────────────────────────────
 
 export function mapWindowToQuota(
