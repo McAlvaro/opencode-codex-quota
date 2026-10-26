@@ -1,15 +1,20 @@
 /** @jsxImportSource @opentui/solid */
-import { createSignal, onCleanup, onMount, type Accessor } from "solid-js";
+import { createSignal, onCleanup, onMount, Show, type Accessor } from "solid-js";
 import fs from "node:fs";
 import { formatBadge, type QuotaBadge } from "./format.js";
+import { isOpenAIActive } from "./model-filter.js";
 import type { OpenCodeAuthProvider } from "../auth/provider.js";
 import type { CodexTelemetryClient } from "../telemetry/client.js";
+import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 
 export interface CodexQuotaWidgetProps {
   authProvider: OpenCodeAuthProvider;
   telemetryClient: CodexTelemetryClient;
   pollIntervalMs?: number;
   badge?: Accessor<QuotaBadge>;
+  api?: TuiPluginApi;
+  sessionID?: string;
+  isOpenAI?: boolean | (() => boolean);
 }
 
 function debugLog(msg: string) {
@@ -79,22 +84,40 @@ export async function updateQuotaBadge(
   }
 }
 
+export function isWidgetVisible(props: CodexQuotaWidgetProps): boolean {
+  if (typeof props.isOpenAI === "boolean") {
+    return props.isOpenAI;
+  }
+  if (typeof props.isOpenAI === "function") {
+    return props.isOpenAI();
+  }
+  return isOpenAIActive(props.api, props.sessionID);
+}
+
 export function CodexQuotaWidget(props: CodexQuotaWidgetProps) {
   const { badge } = getOrCreateSharedBadgeSignal();
   const pollInterval = props.pollIntervalMs ?? 30_000;
 
-  // Trigger update immediately upon instantiation!
-  void updateQuotaBadge(props.authProvider, props.telemetryClient);
+  const isVisible = () => isWidgetVisible(props);
+
+  // Only trigger update if OpenAI is active
+  if (isVisible()) {
+    void updateQuotaBadge(props.authProvider, props.telemetryClient);
+  }
 
   if (!pollTimer) {
     pollTimer = setInterval(() => {
-      void updateQuotaBadge(props.authProvider, props.telemetryClient);
+      if (isVisible()) {
+        void updateQuotaBadge(props.authProvider, props.telemetryClient);
+      }
     }, pollInterval);
   }
 
   onMount(() => {
     debugLog("CodexQuotaWidget onMount fired");
-    void updateQuotaBadge(props.authProvider, props.telemetryClient);
+    if (isVisible()) {
+      void updateQuotaBadge(props.authProvider, props.telemetryClient);
+    }
   });
 
   onCleanup(() => {
@@ -104,8 +127,10 @@ export function CodexQuotaWidget(props: CodexQuotaWidgetProps) {
   const displayBadge = props.badge ?? badge;
 
   return (
-    <box flexDirection="row">
-      <text fg={displayBadge().color}>{displayBadge().text}</text>
-    </box>
+    <Show when={isVisible()}>
+      <box flexDirection="row">
+        <text fg={displayBadge().color}>{displayBadge().text}</text>
+      </box>
+    </Show>
   );
 }

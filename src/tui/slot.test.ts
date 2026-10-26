@@ -35,20 +35,28 @@ describe("registerQuotaSlots", () => {
     expect(typeof capturedPlugin.slots.session_prompt_right).toBe("function");
 
     // Invoking the slot renderers calls the component with expected props
-    const footerElement = capturedPlugin.slots.sidebar_footer();
+    const footerElement = capturedPlugin.slots.sidebar_footer({
+      session_id: "test-sess",
+    });
     expect(footerElement).toEqual({
       type: "CodexQuotaWidget",
       props: {
+        api: mockApi,
+        sessionID: "test-sess",
         authProvider: mockAuthProvider,
         telemetryClient: mockTelemetryClient,
         pollIntervalMs: 15_000,
       },
     });
 
-    const promptElement = capturedPlugin.slots.session_prompt_right();
+    const promptElement = capturedPlugin.slots.session_prompt_right({
+      session_id: "test-sess",
+    });
     expect(promptElement).toEqual({
       type: "CodexQuotaWidget",
       props: {
+        api: mockApi,
+        sessionID: "test-sess",
         authProvider: mockAuthProvider,
         telemetryClient: mockTelemetryClient,
         pollIntervalMs: 15_000,

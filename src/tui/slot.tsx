@@ -16,15 +16,19 @@ export function registerQuotaSlots(
 ): string {
   return api.slots.register({
     slots: {
-      sidebar_footer: () => (
+      sidebar_footer: (ctx?: any) => (
         <CodexQuotaWidget
+          api={api}
+          sessionID={ctx?.session_id}
           authProvider={authProvider}
           telemetryClient={telemetryClient}
           pollIntervalMs={options?.pollIntervalMs}
         />
       ),
-      session_prompt_right: () => (
+      session_prompt_right: (ctx?: any) => (
         <CodexQuotaWidget
+          api={api}
+          sessionID={ctx?.session_id}
           authProvider={authProvider}
           telemetryClient={telemetryClient}
           pollIntervalMs={options?.pollIntervalMs}

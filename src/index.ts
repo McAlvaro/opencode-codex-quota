@@ -92,6 +92,14 @@ export const tui: TuiPlugin = async (api) => {
     registerQuotaSlots(api, authProvider, telemetryClient);
     registerQuotaCommands(api, authProvider, telemetryClient, resetController);
     void updateQuotaBadge(authProvider, telemetryClient);
+
+    api.event?.on?.("session.next.model.switched" as any, () => {
+      debugLog("event: session.next.model.switched");
+      void updateQuotaBadge(authProvider, telemetryClient);
+    });
+    api.event?.on?.("session.updated" as any, () => {
+      void updateQuotaBadge(authProvider, telemetryClient);
+    });
   });
 };
 
@@ -112,3 +120,4 @@ export * from "./tui/slot.js";
 export * from "./tui/dialog-options.js";
 export * from "./tui/reset-dialog.js";
 export * from "./tui/commands.js";
+export * from "./tui/model-filter.js";
