@@ -35,6 +35,14 @@ export async function showQuotaDetailsDialog(
   }
 
   const openConfirmDialog = () => {
+    if (telemetry.availableResetCredits <= 0) {
+      api.ui.toast({
+        variant: "warning",
+        title: "Codex Quota",
+        message: "No tienes créditos de reseteo disponibles en esta cuenta.",
+      });
+      return;
+    }
     api.ui.dialog.replace(() => (
       <api.ui.DialogConfirm
         title="Confirm Quota Reset"

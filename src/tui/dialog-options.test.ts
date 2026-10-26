@@ -38,19 +38,19 @@ describe("buildQuotaDialogOptions", () => {
     // Option 0: Plan & Pacing
     expect(options[0].title).toContain("Suscripción: Plus");
     expect(options[0].title).toContain("Al ritmo previsto");
-    expect(options[0].disabled).toBe(true);
+    expect(options[0].disabled).toBe(false);
 
     // Option 1: 5-Hour Window
     expect(options[1].title).toContain("5h Window: 42.5%");
     expect(options[1].description).toContain("2h 15m");
-    expect(options[1].disabled).toBe(true);
+    expect(options[1].disabled).toBe(false);
 
     // Option 2: Weekly Window
     expect(options[2].title).toContain("7d Window: 28.0%");
     expect(options[2].description).toContain("2d 0h");
-    expect(options[2].disabled).toBe(true);
+    expect(options[2].disabled).toBe(false);
 
-    // Option 3: Consume credit (enabled since credits = 1)
+    // Option 3: Consume credit
     expect(options[3].title).toBe("⚡ Canjear 1 Crédito de Reseteo");
     expect(options[3].description).toContain("1 crédito disponible");
     expect(options[3].disabled).toBe(false);
@@ -59,11 +59,12 @@ describe("buildQuotaDialogOptions", () => {
 
     // Option 4: Close
     expect(options[4].title).toBe("Cerrar");
+    expect(options[4].disabled).toBe(false);
     options[4].onSelect?.();
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("should disable consume option when available credits is 0", () => {
+  it("should format consume description when available credits is 0", () => {
     const telemetry: QuotaTelemetry = {
       primaryWindow: null,
       weeklyWindow: null,
@@ -79,7 +80,7 @@ describe("buildQuotaDialogOptions", () => {
 
     const consumeOption = options.find((opt) => opt.value === "consume");
     expect(consumeOption).toBeDefined();
-    expect(consumeOption?.disabled).toBe(true);
+    expect(consumeOption?.disabled).toBe(false);
     expect(consumeOption?.description).toContain("Sin créditos de reseteo disponibles");
   });
 });

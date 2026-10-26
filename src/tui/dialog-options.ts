@@ -35,8 +35,9 @@ export function buildQuotaDialogOptions(
     title: `Suscripción: ${plan} · ${pacing.text}`,
     value: "plan_status",
     description: `Estado: ${pacing.text} · ${telemetry.availableResetCredits} crédito(s) disponibles`,
-    category: "Moshi Telemetry",
-    disabled: true,
+    category: "Estado & Suscripción",
+    disabled: false,
+    onSelect: () => {},
   });
 
   // Primary 5-hour window item
@@ -49,7 +50,8 @@ export function buildQuotaDialogOptions(
       value: "primary_window",
       description: `Resetea en ${timeRemaining} (Restante: ${pw.remainingPercent.toFixed(1)}%)`,
       category: "Ventanas de Cuota",
-      disabled: true,
+      disabled: false,
+      onSelect: () => {},
     });
   }
 
@@ -63,7 +65,8 @@ export function buildQuotaDialogOptions(
       value: "weekly_window",
       description: `Resetea en ${timeRemaining} (Restante: ${ww.remainingPercent.toFixed(1)}%)`,
       category: "Ventanas de Cuota",
-      disabled: true,
+      disabled: false,
+      onSelect: () => {},
     });
   }
 
@@ -77,7 +80,7 @@ export function buildQuotaDialogOptions(
         ? `${credits} crédito${credits === 1 ? "" : "s"} disponible${credits === 1 ? "" : "s"}`
         : "Sin créditos de reseteo disponibles en esta cuenta",
     category: "Acciones",
-    disabled: credits <= 0,
+    disabled: false,
     onSelect: ctx.onConsume,
   });
 
@@ -86,6 +89,7 @@ export function buildQuotaDialogOptions(
     title: "Cerrar",
     value: "close",
     category: "Acciones",
+    disabled: false,
     onSelect: ctx.onClose,
   });
 
