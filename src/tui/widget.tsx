@@ -48,49 +48,53 @@ export function resetSharedBadgeState() {
   setSharedBadge = null;
 }
 
+export async function updateQuotaBadge(
+  authProvider: OpenCodeAuthProvider,
+  telemetryClient: CodexTelemetryClient,
+): Promise<void> {
+  const { setBadge } = getOrCreateSharedBadgeSignal();
+  debugLog("updateQuotaBadge() started");
+  try {
+    const authResult = await authProvider.getCredentials();
+    debugLog(`authResult status: ${authResult.status}`);
+    if (authResult.status !== "valid") {
+      const fallback = formatBadge(null, authResult.status);
+      setBadge(fallback);
+      debugLog(`Set fallback badge: ${JSON.stringify(fallback)}`);
+      return;
+    }
+
+    const telemetry = await telemetryClient.getTelemetry(
+      authResult.credentials,
+    );
+    debugLog(`telemetry returned: ${JSON.stringify(telemetry)}`);
+    const newBadge = formatBadge(telemetry, "valid");
+    setBadge(newBadge);
+    debugLog(`Set active badge: ${JSON.stringify(newBadge)}`);
+  } catch (err) {
+    debugLog(
+      `update error: ${err instanceof Error ? err.stack : String(err)}`,
+    );
+    setBadge({ text: "[Codex: Err]", color: "red" });
+  }
+}
+
 export function CodexQuotaWidget(props: CodexQuotaWidgetProps) {
-  const { badge, setBadge } = getOrCreateSharedBadgeSignal();
+  const { badge } = getOrCreateSharedBadgeSignal();
   const pollInterval = props.pollIntervalMs ?? 30_000;
 
-  async function update() {
-    debugLog("CodexQuotaWidget.update() started");
-    try {
-      const authResult = await props.authProvider.getCredentials();
-      debugLog(`authResult status: ${authResult.status}`);
-      if (authResult.status !== "valid") {
-        const fallback = formatBadge(null, authResult.status);
-        setBadge(fallback);
-        debugLog(`Set fallback badge: ${JSON.stringify(fallback)}`);
-        return;
-      }
-
-      const telemetry = await props.telemetryClient.getTelemetry(
-        authResult.credentials,
-      );
-      debugLog(`telemetry returned: ${JSON.stringify(telemetry)}`);
-      const newBadge = formatBadge(telemetry, "valid");
-      setBadge(newBadge);
-      debugLog(`Set active badge: ${JSON.stringify(newBadge)}`);
-    } catch (err) {
-      debugLog(
-        `update error: ${err instanceof Error ? err.stack : String(err)}`,
-      );
-      setBadge({ text: "[Codex: Err]", color: "red" });
-    }
-  }
-
   // Trigger update immediately upon instantiation!
-  void update();
+  void updateQuotaBadge(props.authProvider, props.telemetryClient);
 
   if (!pollTimer) {
     pollTimer = setInterval(() => {
-      void update();
+      void updateQuotaBadge(props.authProvider, props.telemetryClient);
     }, pollInterval);
   }
 
   onMount(() => {
     debugLog("CodexQuotaWidget onMount fired");
-    void update();
+    void updateQuotaBadge(props.authProvider, props.telemetryClient);
   });
 
   onCleanup(() => {

@@ -16,6 +16,7 @@ import { CodexTelemetryClient } from "./telemetry/client.js";
 import { ResetController } from "./actions/reset-controller.js";
 import { registerQuotaSlots } from "./tui/slot.js";
 import { registerQuotaCommands } from "./tui/commands.js";
+import { updateQuotaBadge } from "./tui/widget.js";
 
 function debugLog(msg: string) {
   try {
@@ -90,6 +91,7 @@ export const tui: TuiPlugin = async (api) => {
 
     registerQuotaSlots(api, authProvider, telemetryClient);
     registerQuotaCommands(api, authProvider, telemetryClient, resetController);
+    void updateQuotaBadge(authProvider, telemetryClient);
   });
 };
 
