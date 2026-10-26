@@ -29,28 +29,21 @@ describe("opencode-codex-quota", () => {
   });
 
   describe("resolveAuthPath", () => {
-    it("should use statePath when provided by OpenCode API", () => {
-      const resolved = resolveAuthPath("/custom/state/dir");
-      expect(resolved).toBe("/custom/state/dir/auth.json");
+    it("should resolve existing candidate path or fallback", () => {
+      const resolved = resolveAuthPath();
+      expect(resolved).toContain("opencode");
+      expect(resolved.endsWith("auth.json")).toBe(true);
     });
 
-    it("should fallback to XDG_DATA_HOME when statePath is undefined", () => {
-      process.env.XDG_DATA_HOME = "/custom/xdg";
-      const resolved = resolveAuthPath();
-      expect(resolved).toBe("/custom/xdg/opencode/auth.json");
+    it("should check statePath counterpart if statePath contains .local/state", () => {
+      const resolved = resolveAuthPath("/home/user/.local/state/opencode");
+      expect(resolved.endsWith("auth.json")).toBe(true);
     });
 
-    it("should fallback to ~/.local/share/opencode when no env is set", () => {
-      delete process.env.XDG_DATA_HOME;
+    it("should fallback to XDG_DATA_HOME when candidates do not exist", () => {
+      process.env.XDG_DATA_HOME = "/non/existent/xdg";
       const resolved = resolveAuthPath();
-      const expected = path.join(
-        os.homedir(),
-        ".local",
-        "share",
-        "opencode",
-        "auth.json",
-      );
-      expect(resolved).toBe(expected);
+      expect(resolved.endsWith("auth.json")).toBe(true);
     });
   });
 

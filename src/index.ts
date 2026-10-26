@@ -8,6 +8,7 @@
 
 import path from "node:path";
 import os from "node:os";
+import fs from "node:fs";
 import type { TuiPlugin, TuiPluginModule } from "@opencode-ai/plugin/tui";
 import { OpenCodeAuthProvider } from "./auth/provider.js";
 import { CodexTelemetryClient } from "./telemetry/client.js";
@@ -19,14 +20,46 @@ export const PLUGIN_NAME = "opencode-codex-quota" as const;
 export const PLUGIN_VERSION = "0.1.0" as const;
 
 export function resolveAuthPath(statePath?: string): string {
-  if (statePath) {
-    return path.join(statePath, "auth.json");
-  }
+  const candidates: string[] = [];
+
+  // 1. Standard XDG Data directory (~/.local/share/opencode/auth.json)
   const xdgData = process.env.XDG_DATA_HOME;
   if (xdgData) {
-    return path.join(xdgData, "opencode", "auth.json");
+    candidates.push(path.join(xdgData, "opencode", "auth.json"));
   }
-  return path.join(os.homedir(), ".local", "share", "opencode", "auth.json");
+  candidates.push(
+    path.join(os.homedir(), ".local", "share", "opencode", "auth.json"),
+  );
+
+  // 2. OpenCode state path & share counterpart if it points to .local/state
+  if (statePath) {
+    candidates.push(path.join(statePath, "auth.json"));
+    if (statePath.includes(".local/state")) {
+      candidates.push(
+        path.join(statePath.replace(".local/state", ".local/share"), "auth.json"),
+      );
+    }
+  }
+
+  // 3. Config directory fallback (~/.config/opencode/auth.json)
+  candidates.push(
+    path.join(os.homedir(), ".config", "opencode", "auth.json"),
+  );
+
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(candidate)) {
+        return candidate;
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
+  return (
+    candidates[0] ??
+    path.join(os.homedir(), ".local", "share", "opencode", "auth.json")
+  );
 }
 
 export const tui: TuiPlugin = async (api) => {
