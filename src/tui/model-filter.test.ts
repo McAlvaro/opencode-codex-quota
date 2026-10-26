@@ -4,6 +4,9 @@ import {
   isModelOpenAI,
   resolveActiveModel,
   isOpenAIActive,
+  getOrCreateActiveModelSignal,
+  createIsOpenAISignal,
+  resetActiveModelSignal,
 } from "./model-filter.js";
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 import fs from "node:fs";
@@ -183,6 +186,30 @@ describe("model-filter", () => {
       } as unknown as TuiPluginApi;
 
       expect(isOpenAIActive(mockApi)).toBe(true);
+    });
+  });
+
+  describe("reactive model signal & watcher", () => {
+    it("should update reactive signal when initModelWatcher checks", () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(
+        JSON.stringify({
+          recent: [{ providerID: "google", modelID: "gemini-3-flash-preview" }],
+        }),
+      );
+
+      const mockApi = {
+        state: {
+          path: { state: "/mock/state" },
+        },
+      } as unknown as TuiPluginApi;
+
+      const { model, setModel } = getOrCreateActiveModelSignal(mockApi);
+      expect(isModelOpenAI(model())).toBe(false);
+
+      // Simulate model change to openai
+      setModel({ providerID: "openai", modelID: "gpt-5.6-terra" });
+      expect(isModelOpenAI(model())).toBe(true);
     });
   });
 });

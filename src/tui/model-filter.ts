@@ -1,6 +1,7 @@
 import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
+import { createSignal, createMemo, type Accessor } from "solid-js";
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
 
 export interface ModelRefCandidate {
@@ -108,4 +109,104 @@ export function isOpenAIActive(
 ): boolean {
   const model = resolveActiveModel(api, sessionID);
   return isModelOpenAI(model);
+}
+
+// ── Reactive Solid Signals for Model Tracking ────────────────────────
+
+let modelSignal: [Accessor<ModelRefCandidate | null>, (m: ModelRefCandidate | null) => void] | null = null;
+
+export function getOrCreateActiveModelSignal(api?: TuiPluginApi) {
+  if (!modelSignal) {
+    const initial = resolveActiveModel(api);
+    const [model, setModel] = createSignal<ModelRefCandidate | null>(initial);
+    modelSignal = [model, setModel];
+  }
+  return {
+    model: modelSignal[0],
+    setModel: modelSignal[1],
+  };
+}
+
+export function resetActiveModelSignal(): void {
+  modelSignal = null;
+}
+
+export function createIsOpenAISignal(
+  api?: TuiPluginApi,
+  sessionID?: string,
+): Accessor<boolean> {
+  const { model } = getOrCreateActiveModelSignal(api);
+  return createMemo(() => {
+    if (sessionID && api?.state?.session?.get) {
+      const s = api.state.session.get(sessionID);
+      if (s?.model) {
+        return isModelOpenAI(s.model);
+      }
+    }
+    return isModelOpenAI(model());
+  });
+}
+
+export function initModelWatcher(api: TuiPluginApi): () => void {
+  const { setModel } = getOrCreateActiveModelSignal(api);
+
+  const check = () => {
+    const current = resolveActiveModel(api);
+    setModel(current);
+  };
+
+  // Immediate check
+  check();
+
+  // Polling check every 500ms for file-level or state-level model changes
+  const timer = setInterval(check, 500);
+
+  // Subscribe to OpenCode event bus
+  const unsubs: Array<() => void> = [];
+  if (api.event?.on) {
+    try {
+      unsubs.push(
+        api.event.on("session.next.model.switched" as any, (evt: any) => {
+          if (evt?.properties?.model) {
+            setModel({
+              providerID: evt.properties.model.providerID,
+              modelID: evt.properties.model.id,
+            });
+          } else {
+            check();
+          }
+        }),
+      );
+      unsubs.push(api.event.on("session.updated" as any, check));
+      unsubs.push(api.event.on("session.created" as any, check));
+    } catch {
+      // Ignore
+    }
+  }
+
+  // Watch model.json directly
+  const stateDir =
+    api.state?.path?.state ??
+    path.join(os.homedir(), ".local", "state", "opencode");
+  const modelJsonPath = path.join(stateDir, "model.json");
+
+  try {
+    if (fs.existsSync(modelJsonPath)) {
+      fs.watchFile(modelJsonPath, { interval: 300 }, () => {
+        check();
+      });
+    }
+  } catch {
+    // Ignore watch issues
+  }
+
+  return () => {
+    clearInterval(timer);
+    for (const u of unsubs) {
+      u();
+    }
+    try {
+      fs.unwatchFile(modelJsonPath);
+    } catch {}
+  };
 }

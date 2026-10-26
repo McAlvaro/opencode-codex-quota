@@ -2,7 +2,7 @@
 import { createSignal, onCleanup, onMount, Show, type Accessor } from "solid-js";
 import fs from "node:fs";
 import { formatBadge, type QuotaBadge } from "./format.js";
-import { isOpenAIActive } from "./model-filter.js";
+import { createIsOpenAISignal, isOpenAIActive } from "./model-filter.js";
 import type { OpenCodeAuthProvider } from "../auth/provider.js";
 import type { CodexTelemetryClient } from "../telemetry/client.js";
 import type { TuiPluginApi } from "@opencode-ai/plugin/tui";
@@ -97,8 +97,17 @@ export function isWidgetVisible(props: CodexQuotaWidgetProps): boolean {
 export function CodexQuotaWidget(props: CodexQuotaWidgetProps) {
   const { badge } = getOrCreateSharedBadgeSignal();
   const pollInterval = props.pollIntervalMs ?? 30_000;
+  const isOpenAIRef = createIsOpenAISignal(props.api, props.sessionID);
 
-  const isVisible = () => isWidgetVisible(props);
+  const isVisible = () => {
+    if (typeof props.isOpenAI === "boolean") {
+      return props.isOpenAI;
+    }
+    if (typeof props.isOpenAI === "function") {
+      return props.isOpenAI();
+    }
+    return isOpenAIRef();
+  };
 
   // Only trigger update if OpenAI is active
   if (isVisible()) {

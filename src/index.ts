@@ -17,6 +17,7 @@ import { ResetController } from "./actions/reset-controller.js";
 import { registerQuotaSlots } from "./tui/slot.js";
 import { registerQuotaCommands } from "./tui/commands.js";
 import { updateQuotaBadge } from "./tui/widget.js";
+import { initModelWatcher, isOpenAIActive } from "./tui/model-filter.js";
 
 function debugLog(msg: string) {
   try {
@@ -84,22 +85,20 @@ export const tui: TuiPlugin = async (api) => {
     const telemetryClient = new CodexTelemetryClient();
     const resetController = new ResetController(telemetryClient);
 
+    const cleanupWatcher = initModelWatcher(api);
+
     api.lifecycle?.onDispose?.(() => {
       debugLog("api.lifecycle.onDispose fired");
+      cleanupWatcher();
       disposeRoot();
     });
 
     registerQuotaSlots(api, authProvider, telemetryClient);
     registerQuotaCommands(api, authProvider, telemetryClient, resetController);
-    void updateQuotaBadge(authProvider, telemetryClient);
 
-    api.event?.on?.("session.next.model.switched" as any, () => {
-      debugLog("event: session.next.model.switched");
+    if (isOpenAIActive(api)) {
       void updateQuotaBadge(authProvider, telemetryClient);
-    });
-    api.event?.on?.("session.updated" as any, () => {
-      void updateQuotaBadge(authProvider, telemetryClient);
-    });
+    }
   });
 };
 
